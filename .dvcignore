@@ -1,0 +1,6 @@
+# DVC ignore patterns — same as .gitignore for local-only files
+.venv/
+__pycache__/
+.pytest_cache/
+.env
+.env.*
