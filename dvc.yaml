@@ -1,0 +1,46 @@
+# DVC pipeline — Stage 01 (Member A) through evaluate
+# Use `py` on Windows; GitHub Actions uses `python` on Ubuntu
+
+vars:
+  - configs/model_config.yaml
+  - configs/data_config.yaml
+
+stages:
+  generate:
+    cmd: py scripts/generate_sample_data.py
+    deps:
+      - scripts/generate_sample_data.py
+      - src/data/validate_data.py
+      - configs/data_config.yaml
+      - configs/model_config.yaml
+
+  ingest:
+    cmd: py scripts/ingest_data.py --skip-blob
+    deps:
+      - scripts/ingest_data.py
+      - src/data/validate_data.py
+      - data/raw/website_monitoring.csv
+    outs:
+      - data/raw/dataset_hash.txt
+      - data/raw/ingestion_metadata.json
+
+  train:
+    cmd: py scripts/train_model.py
+    deps:
+      - scripts/train_model.py
+      - src/models/train.py
+      - data/raw/website_monitoring.csv
+      - configs/model_config.yaml
+    outs:
+      - models/outage_model.joblib
+      - data/processed/test_set.csv
+
+  evaluate:
+    cmd: py scripts/evaluate_model.py
+    deps:
+      - scripts/evaluate_model.py
+      - models/outage_model.joblib
+      - data/processed/test_set.csv
+    metrics:
+      - data/processed/eval_metrics.json:
+          cache: false

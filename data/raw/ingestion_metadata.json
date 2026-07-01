@@ -1,0 +1,9 @@
+{
+  "dataset_hash": "6c32fa0b4296bf7dfc1a1f652517b317135cb1bc45db8b37c208dda264a87c55",
+  "row_count": 50,
+  "ingested_at_utc": "2026-07-01T01:32:02.121084+00:00",
+  "blob_url": null,
+  "dvc_tracked": false,
+  "stage": "01-data-ingestion",
+  "owner": "Member A"
+}

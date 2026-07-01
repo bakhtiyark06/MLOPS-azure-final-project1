@@ -1,0 +1,9 @@
+# Member A — data pipeline settings (no secrets)
+dataset_name: website_monitoring
+raw_filename: website_monitoring.csv
+blob_path: raw/website_monitoring.csv
+reference_rows: 500
+current_snapshot_rows: 300
+default_sample_count: 2000
+dvc_remote_name: azureblob
+ingestion_metadata_file: data/raw/ingestion_metadata.json

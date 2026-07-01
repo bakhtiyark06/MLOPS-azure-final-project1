@@ -1,0 +1,14 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--cov=src --cov=scripts --cov-report=term-missing --cov-fail-under=70"
+
+[tool.coverage.run]
+source = ["src", "scripts"]
+omit = [
+    "tests/*",
+    "infra/*",
+    "scripts/build_image.py",
+    "scripts/openrouter_report.py",
+    "scripts/run_drift_check.py",
+]

@@ -1,0 +1,48 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Data (never commit raw datasets — but DO commit DVC pointer files)
+/data/raw/*
+!/data/raw/.gitkeep
+!/data/raw/*.dvc
+!/data/raw/dataset_hash.txt
+!/data/raw/ingestion_metadata.json
+/data/processed/*
+!/data/processed/.gitkeep
+/data/reference/*
+!/data/reference/.gitkeep
+!/data/reference/reference.csv
+*.csv
+!data/reference/reference.csv
+*.parquet
+
+# DVC cache
+.dvc/cache/
+.dvc/tmp/
+
+# Environment and secrets
+.env
+.env.*
+*.pem
+secrets/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# ML artifacts (tracked via DVC / Azure ML instead)
+/models/
+mlruns/
+mlflow.db
+*.pkl
+*.joblib

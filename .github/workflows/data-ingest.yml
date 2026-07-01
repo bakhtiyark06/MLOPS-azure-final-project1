@@ -1,0 +1,73 @@
+name: Data Ingest — Member A Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/generate_sample_data.py"
+      - "scripts/ingest_data.py"
+      - "scripts/setup_dvc.py"
+      - "src/data/**"
+      - "configs/data_config.yaml"
+      - "dvc.yaml"
+      - ".dvc/**"
+      - "data/**/*.dvc"
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/generate_sample_data.py"
+      - "scripts/ingest_data.py"
+      - "src/data/**"
+  workflow_dispatch:
+
+jobs:
+  data-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Initialize DVC
+        run: python scripts/setup_dvc.py --skip-remote
+
+      - name: Generate monitoring dataset
+        run: python scripts/generate_sample_data.py --n-samples 1000
+
+      - name: Validate and ingest data locally
+        run: python scripts/ingest_data.py --skip-blob --skip-dvc
+
+      - name: Upload dataset to Azure Blob Storage
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+        run: python scripts/ingest_data.py --skip-dvc
+        continue-on-error: true
+
+      - name: DVC track and push to Azure remote
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+        run: |
+          python scripts/setup_dvc.py
+          python scripts/ingest_data.py --skip-blob
+        continue-on-error: true
+
+      - name: Run Member A unit tests
+        run: pytest tests/test_data_ingestion.py -v
+
+      - name: Upload ingestion metadata artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ingestion-metadata
+          path: |
+            data/raw/ingestion_metadata.json
+            data/raw/dataset_hash.txt
