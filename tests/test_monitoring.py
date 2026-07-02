@@ -66,6 +66,9 @@ def test_write_drift_summary(tmp_path):
 
 
 def test_setup_telemetry_skips_without_connection_string(monkeypatch):
+    import src.monitoring.telemetry as telemetry_module
+
+    telemetry_module._telemetry_configured = False
     monkeypatch.delenv("APPLICATIONINSIGHTS_CONNECTION_STRING", raising=False)
     assert setup_telemetry() is False
 
@@ -73,6 +76,60 @@ def test_setup_telemetry_skips_without_connection_string(monkeypatch):
 def test_get_app_insights_connection_string(monkeypatch):
     monkeypatch.setenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "InstrumentationKey=test")
     assert get_app_insights_connection_string() == "InstrumentationKey=test"
+
+
+def test_setup_telemetry_already_configured(monkeypatch):
+    import src.monitoring.telemetry as telemetry_module
+
+    telemetry_module._telemetry_configured = True
+    assert setup_telemetry() is True
+
+
+def test_setup_telemetry_configure_failure(monkeypatch):
+    import sys
+    import types
+
+    import src.monitoring.telemetry as telemetry_module
+
+    telemetry_module._telemetry_configured = False
+    monkeypatch.setenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "InstrumentationKey=test")
+
+    def boom(**kwargs):
+        raise RuntimeError("configure failed")
+
+    fake_module = types.SimpleNamespace(configure_azure_monitor=boom)
+    monkeypatch.setitem(sys.modules, "azure.monitor.opentelemetry", fake_module)
+    assert setup_telemetry() is False
+
+
+def test_instrument_fastapi_when_not_configured():
+    import src.monitoring.telemetry as telemetry_module
+    from src.monitoring.telemetry import instrument_fastapi
+
+    telemetry_module._telemetry_configured = False
+    instrument_fastapi(object())
+
+
+def test_instrument_fastapi_success(monkeypatch):
+    import sys
+    import types
+
+    import src.monitoring.telemetry as telemetry_module
+    from src.monitoring.telemetry import instrument_fastapi
+
+    telemetry_module._telemetry_configured = True
+    calls: list = []
+
+    class FakeInstrumentor:
+        @staticmethod
+        def instrument_app(app):
+            calls.append(app)
+
+    fake_module = types.SimpleNamespace(FastAPIInstrumentor=FakeInstrumentor)
+    monkeypatch.setitem(sys.modules, "opentelemetry.instrumentation.fastapi", fake_module)
+    app = object()
+    instrument_fastapi(app)
+    assert calls == [app]
 
 
 def test_setup_telemetry_configures_when_set(monkeypatch):
