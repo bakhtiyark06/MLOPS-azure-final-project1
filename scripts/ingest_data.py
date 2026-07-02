@@ -229,7 +229,7 @@ def main() -> int:
     # Upload to Azure unless skipped or no connection string
     if not args.skip_blob:
         if get_env_optional("AZURE_STORAGE_CONNECTION_STRING"):
-            azure_cfg = load_azure_config()
+            azure_cfg = load_azure_config() or {}
             container = azure_cfg.get("blob_container", "datasets")
             blob_name = data_cfg.get("blob_path", "raw/website_monitoring.csv")
             blob_url = upload_to_blob(data_path, container, blob_name)

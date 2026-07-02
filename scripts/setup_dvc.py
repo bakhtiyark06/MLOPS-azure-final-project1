@@ -79,7 +79,7 @@ def configure_azure_remote(root: Path, connection_string: str = None) -> bool:
         True if remote configured, False otherwise.
     """
     # Load container name from azure_config.yaml
-    azure_cfg = load_azure_config()
+    azure_cfg = load_azure_config() or {}
     container = azure_cfg.get("blob_container", "datasets")
     remote_name = "azureblob"
     # DVC Azure URL format: azure://container/path-prefix
