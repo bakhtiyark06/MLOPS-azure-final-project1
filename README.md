@@ -65,6 +65,22 @@ py scripts/openrouter_report.py --dry-run
 
 Architecture diagram: [docs/architecture/README.md](docs/architecture/README.md)
 
+### Local hub (single localhost — API + reports)
+
+Start everything on **http://127.0.0.1:8000** (keep the terminal open):
+
+```bash
+python3.11 scripts/run_local.py
+```
+
+Open **http://127.0.0.1:8000/** for the dashboard, or **http://127.0.0.1:8000/docs** for Swagger.
+
+Verify the server is running:
+
+```bash
+python3.11 scripts/check_local.py
+```
+
 ## Member C — API, Docker, CI, ACI staging (complete)
 
 See [docs/stages/stage-05-containerization.md](docs/stages/stage-05-containerization.md) through [stage-08-deployment.md](docs/stages/stage-08-deployment.md).

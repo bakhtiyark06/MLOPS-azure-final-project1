@@ -20,6 +20,8 @@ py infra/deploy_aci.py --wait-health
 py infra/deploy_aks.py --wait-health
 ```
 
+**Local demo (single port):** `python3.11 scripts/run_local.py` → open http://127.0.0.1:8000/
+
 Set `OPENROUTER_API_KEY` before the OpenRouter demo.
 
 ## Presentation order
