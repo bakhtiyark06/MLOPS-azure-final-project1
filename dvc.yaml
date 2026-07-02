@@ -44,3 +44,15 @@ stages:
     metrics:
       - data/processed/eval_metrics.json:
           cache: false
+
+  drift:
+    cmd: py scripts/run_drift_check.py
+    deps:
+      - scripts/run_drift_check.py
+      - src/monitoring/drift.py
+      - data/reference/reference.csv
+      - data/processed/current.csv
+      - configs/model_config.yaml
+    outs:
+      - reports/drift/drift_report.html
+      - reports/drift/drift_summary.json

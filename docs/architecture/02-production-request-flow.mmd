@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant Client
+    participant LB as AKS LoadBalancer<br/>20.84.194.181
+    participant Pod as FastAPI Pod
+    participant Model as outage_model.joblib
+    participant AI as Application Insights<br/>outage-predictor-insights
+
+    Client->>LB: POST /predict
+    LB->>Pod: forward request
+    Pod->>Model: predict
+    Model-->>Pod: outage_probability
+    Pod->>AI: trace + custom metrics
+    Pod-->>Client: PredictResponse JSON

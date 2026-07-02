@@ -65,6 +65,16 @@ def get_azure_credentials() -> dict:
     }
 
 
+def get_app_insights_connection_string() -> Optional[str]:
+    """
+    Return Application Insights connection string from environment.
+
+    Returns:
+        Connection string or None if not configured.
+    """
+    return get_env_optional("APPLICATIONINSIGHTS_CONNECTION_STRING")
+
+
 def get_openrouter_api_key() -> str:
     """
     Return the OpenRouter API key from environment.

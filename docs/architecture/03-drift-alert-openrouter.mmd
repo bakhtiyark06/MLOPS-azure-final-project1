@@ -1,0 +1,36 @@
+flowchart LR
+    subgraph data ["Data snapshots"]
+        Ref["reference.csv"]
+        Cur["current.csv"]
+    end
+
+    subgraph drift ["Drift detection"]
+        DriftScript["run_drift_check.py<br/>Evidently"]
+        Report["drift_report.html"]
+        Summary["drift_summary.json"]
+    end
+
+    subgraph notify ["Alerting"]
+        GHActions["GitHub Actions<br/>drift-check.yml"]
+        MetricAlert["Metric Alert<br/>outage-predictor-high-failed-requests"]
+        ActionGroup["Action Group<br/>outage-predictor-alerts"]
+    end
+
+    subgraph llm ["LLM reports"]
+        EvalMetrics["eval_metrics.json"]
+        OpenRouter["openrouter_report.py"]
+        EvalReport["openrouter_eval_summary.md"]
+        FailReport["openrouter_failure_analysis.md"]
+    end
+
+    Ref --> DriftScript
+    Cur --> DriftScript
+    DriftScript --> Report
+    DriftScript --> Summary
+    DriftScript -->|exit 1 drift| GHActions
+    DriftScript -->|exit 1 drift| MetricAlert
+    MetricAlert --> ActionGroup
+    Summary --> OpenRouter
+    EvalMetrics --> OpenRouter
+    OpenRouter --> EvalReport
+    OpenRouter -->|gate failed| FailReport

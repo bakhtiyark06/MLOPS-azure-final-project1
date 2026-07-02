@@ -1,0 +1,26 @@
+# Monitoring configuration (no secrets — use env vars)
+application_insights:
+  connection_string_env: APPLICATIONINSIGHTS_CONNECTION_STRING
+  service_name: outage-predictor-api
+
+drift:
+  reference_path: data/reference/reference.csv
+  current_path: data/processed/current.csv
+  report_dir: reports/drift
+
+alerts:
+  action_group_name: outage-predictor-alerts
+  app_insights_name: outage-predictor-insights
+  failed_request_threshold: 5
+  email_env: ALERT_EMAIL
+
+openrouter:
+  api_key_env: OPENROUTER_API_KEY
+  model_env: OPENROUTER_MODEL
+  default_model: openai/gpt-4o-mini
+  report_dir: reports/openrouter
+
+aks:
+  cluster_name_env: AKS_CLUSTER_NAME
+  namespace_env: AKS_NAMESPACE
+  default_namespace: outage-predictor

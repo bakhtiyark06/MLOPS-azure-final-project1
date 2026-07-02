@@ -1,0 +1,37 @@
+flowchart TB
+    subgraph rg ["Resource Group: rg-website-outage-mlops (centralus)"]
+        subgraph compute ["Compute"]
+            AKS["AKS<br/>aks-outage-predictor<br/>LoadBalancer 20.84.194.181"]
+            ACI["ACI Staging<br/>outage-predictor-staging"]
+        end
+
+        subgraph registry ["Registry"]
+            ACR["ACR<br/>acrwoutagemlops.azurecr.io<br/>outage-predictor:v1"]
+        end
+
+        subgraph storage ["Storage"]
+            Blob["Blob Storage<br/>stwoutagemlops / datasets"]
+        end
+
+        subgraph monitor ["Monitoring"]
+            AppInsights["App Insights<br/>outage-predictor-insights"]
+            ActionGroup["Action Group<br/>outage-predictor-alerts"]
+            MetricAlert["Metric Alert<br/>high-failed-requests"]
+        end
+    end
+
+    subgraph cicd ["GitHub Actions"]
+        TrainWF["train.yml"]
+        DeployWF["deploy.yml"]
+        DriftWF["drift-check.yml"]
+        OpenRouterWF["openrouter-report.yml"]
+    end
+
+    ACR --> AKS
+    ACR --> ACI
+    AKS --> AppInsights
+    MetricAlert --> ActionGroup
+    TrainWF --> ACR
+    DeployWF --> AKS
+    DriftWF --> MetricAlert
+    OpenRouterWF --> AppInsights

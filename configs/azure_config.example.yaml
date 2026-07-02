@@ -1,8 +1,13 @@
 # Azure resource names (no secrets — use env vars for credentials)
 subscription_id: "${AZURE_SUBSCRIPTION_ID}"
-resource_group: "<your-rg>"
-workspace_name: "<your-ml-workspace>"
+resource_group: rg-website-outage-mlops
+workspace_name: mlw-website-outage
 storage_account: stwoutagemlops
 blob_container: datasets
 model_registry_name: website-outage-model
 mlflow_experiment_name: website-outage-prediction
+acr_name: acrwoutagemlops
+aks_cluster_name: aks-outage-predictor
+app_insights_name: outage-predictor-insights
+location: centralus
+aks_node_vm_size: standard_b2s_v2

@@ -17,6 +17,54 @@ End-to-end MLOps CI/CD pipeline that predicts whether a website is likely to hav
 | `tests/` | pytest suite (≥70% coverage) |
 | `.github/workflows/` | GitHub Actions CI/CD |
 
+## Local Azure connection (one command)
+
+After `az login`, run from the project root:
+
+```bash
+cd MLOPS-azure-final-project1
+source scripts/setup_azure_env.sh
+```
+
+This will:
+- Set subscription `4c3c4430-0ce6-48bc-8e33-1947f3876ebd`
+- Use resource group `rg-website-outage-mlops`
+- Create/verify ACR `acrwoutagemlops` and App Insights `outage-predictor-insights`
+- Write `.env` and `configs/azure_config.yaml` (gitignored)
+
+Then deploy staging:
+
+```bash
+python3 scripts/build_image.py --acr acrwoutagemlops --tag v1 --push
+python3 infra/deploy_aci.py --wait-health
+```
+
+For AKS, create the cluster first (use `standard_b2s_v2` in centralus):
+
+```bash
+az aks create --resource-group rg-website-outage-mlops --name aks-outage-predictor \
+  --location centralus --node-count 1 --node-vm-size standard_b2s_v2 \
+  --enable-addons monitoring --attach-acr acrwoutagemlops --generate-ssh-keys
+python3 infra/deploy_aks.py --wait-health
+```
+
+See [docs/azure-setup.md](docs/azure-setup.md) for GitHub Secrets.
+
+## Member D — AKS, monitoring, drift, OpenRouter (complete)
+
+See [docs/stages/stage-08-deployment.md](docs/stages/stage-08-deployment.md) (AKS section), [stage-09-monitoring.md](docs/stages/stage-09-monitoring.md), and [stage-10-openrouter.md](docs/stages/stage-10-openrouter.md).
+
+```powershell
+py scripts/verify_member_d.py
+py scripts/evaluate_model.py
+py infra/deploy_aks.py --wait-health
+py scripts/run_drift_check.py
+py infra/setup_alerts.py --email you@example.com
+py scripts/openrouter_report.py --dry-run
+```
+
+Architecture diagram: [docs/architecture/README.md](docs/architecture/README.md)
+
 ## Member C — API, Docker, CI, ACI staging (complete)
 
 See [docs/stages/stage-05-containerization.md](docs/stages/stage-05-containerization.md) through [stage-08-deployment.md](docs/stages/stage-08-deployment.md).

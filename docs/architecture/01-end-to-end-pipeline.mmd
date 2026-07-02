@@ -1,0 +1,50 @@
+flowchart TB
+    subgraph memberA ["Member A — Data"]
+        Raw["Raw CSV<br/>website_monitoring.csv"]
+        DVC["DVC Versioning"]
+        Blob["Azure Blob<br/>stwoutagemlops"]
+        Ref["reference.csv<br/>baseline"]
+        Cur["current.csv<br/>snapshot"]
+    end
+
+    subgraph memberB ["Member B — Train"]
+        Train["Train RandomForest"]
+        MLflow["MLflow Tracking"]
+        Eval["Quality Gate<br/>eval_metrics.json"]
+        Registry["Model Registry"]
+    end
+
+    subgraph memberC ["Member C — Staging"]
+        Docker["Docker Image"]
+        ACR["ACR<br/>acrwoutagemlops"]
+        API["FastAPI Service"]
+        ACI["ACI Staging"]
+        CI["GitHub Actions CI"]
+    end
+
+    subgraph memberD ["Member D — Production"]
+        AKS["AKS Production<br/>aks-outage-predictor"]
+        AppInsights["Application Insights<br/>outage-predictor-insights"]
+        Evidently["Evidently Drift"]
+        Alerts["Azure Monitor Alerts<br/>outage-predictor-alerts"]
+        OpenRouter["OpenRouter LLM Reports"]
+    end
+
+    Raw --> DVC --> Blob
+    Raw --> Ref
+    Raw --> Cur
+    Blob --> Train
+    Train --> MLflow --> Eval
+    Eval -->|gate_passed| Registry
+    Registry --> Docker --> ACR
+    ACR --> ACI
+    ACR --> AKS
+    API --> ACI
+    API --> AKS
+    AKS --> AppInsights
+    Ref --> Evidently
+    Cur --> Evidently
+    Evidently --> Alerts
+    Eval --> OpenRouter
+    Evidently --> OpenRouter
+    CI --> Docker
