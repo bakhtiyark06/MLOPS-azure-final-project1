@@ -109,3 +109,18 @@ def test_predict_unavailable_without_model(tmp_path, sample_payload):
     with TestClient(app) as client:
         response = client.post("/predict", json=sample_payload)
     assert response.status_code == 503
+
+
+def test_local_hub_home(api_client):
+    response = api_client.get("/")
+    assert response.status_code == 200
+    assert "Local Hub" in response.text or "local hub" in response.text.lower()
+    assert "/docs" in response.text
+
+
+def test_monitoring_status(api_client):
+    response = api_client.get("/monitoring/status")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["health"] == "http://localhost:8000/health"
+    assert "reports" in body

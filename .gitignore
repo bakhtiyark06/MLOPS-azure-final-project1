@@ -39,6 +39,7 @@ secrets/
 # OS
 Thumbs.db
 .DS_Store
+aks-create.log
 
 # ML artifacts (tracked via DVC / Azure ML instead)
 /models/

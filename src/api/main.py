@@ -16,6 +16,7 @@ from src.api.config import ApiSettings, get_api_settings
 from src.api.inference import features_from_request, load_model, predict_outage
 from src.api.schemas import HealthResponse, PredictRequest, PredictResponse
 from src.data.preprocess import get_feature_columns
+from src.api.local_dashboard import register_local_dashboard
 from src.monitoring.telemetry import instrument_fastapi, setup_telemetry
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         )
         return PredictResponse(**result)
 
+    register_local_dashboard(app)
     return app
 
 
