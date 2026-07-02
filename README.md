@@ -17,6 +17,19 @@ End-to-end MLOps CI/CD pipeline that predicts whether a website is likely to hav
 | `tests/` | pytest suite (≥70% coverage) |
 | `.github/workflows/` | GitHub Actions CI/CD |
 
+## Member C — API, Docker, CI, ACI staging (complete)
+
+See [docs/stages/stage-05-containerization.md](docs/stages/stage-05-containerization.md) through [stage-08-deployment.md](docs/stages/stage-08-deployment.md).
+
+```powershell
+py scripts/generate_sample_data.py
+py scripts/train_model.py
+py -m uvicorn src.api.main:app --reload --port 8000
+py -m pytest tests/test_api.py -v
+py scripts/build_image.py --acr <acr> --tag v1 --push
+py infra/deploy_aci.py --wait-health
+```
+
 ## Member A — Data pipeline (complete)
 
 See [docs/stages/stage-01-ingestion.md](docs/stages/stage-01-ingestion.md) for full walkthrough.
