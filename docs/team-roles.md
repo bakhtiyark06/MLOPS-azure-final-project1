@@ -5,7 +5,7 @@
 | A      | (fill in)       | **Stage 01 — Data/DVC/Blob** (COMPLETE) | 6 API         |
 | B      | (fill in)       | 2-4 Train/MLflow/Gate/Registry | 8 Tests |
 | C      | Sana            | **Stages 05–07 Docker/API/CI/ACI** (COMPLETE) | 9 Monitoring |
-| D      | (fill in)       | 8-9 AKS/Monitor/Drift/OpenRouter | 1 Data |
+| D      | (fill in)       | **Stages 8–10 AKS/Monitor/Drift/OpenRouter** (COMPLETE) | 1 Data |
 
 ## Demo prep
 

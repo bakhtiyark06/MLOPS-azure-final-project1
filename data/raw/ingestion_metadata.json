@@ -1,9 +1,9 @@
 {
-  "dataset_hash": "d197fe3f6309e92f4a99f8aaf7e9d03df064be303cec0b4ade2f55c735000269",
-  "row_count": 2000,
-  "ingested_at_utc": "2026-07-01T02:39:05.930007+00:00",
-  "blob_url": "https://stwoutagemlops.blob.core.windows.net/datasets/raw/website_monitoring.csv",
-  "dvc_tracked": true,
+  "dataset_hash": "59e3d6fc7787e39a5511b4e3cc512266a96235ccf0ff1824b67503d75c6ade39",
+  "row_count": 100,
+  "ingested_at_utc": "2026-07-02T03:17:13.199166+00:00",
+  "blob_url": null,
+  "dvc_tracked": false,
   "stage": "01-data-ingestion",
   "owner": "Member A"
 }

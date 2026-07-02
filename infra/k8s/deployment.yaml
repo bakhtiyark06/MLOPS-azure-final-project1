@@ -1,0 +1,48 @@
+# Member D — AKS production deployment for outage prediction API
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: outage-predictor
+  labels:
+    app: outage-predictor
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: outage-predictor
+  template:
+    metadata:
+      labels:
+        app: outage-predictor
+    spec:
+      imagePullSecrets:
+        - name: acr-secret
+      containers:
+        - name: api
+          image: ${IMAGE}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+              value: "${APPLICATIONINSIGHTS_CONNECTION_STRING}"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi

@@ -1,4 +1,3 @@
-Updated upstream
 # Python
 .venv/
 __pycache__/
@@ -49,6 +48,6 @@ mlflow.db
 *.joblib
 
 configs/azure_config.yaml
-__pycache__/
-*.pyc
- Stashed changes
+
+# Generated reports (drift, OpenRouter)
+/reports/

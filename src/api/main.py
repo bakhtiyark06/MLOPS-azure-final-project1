@@ -6,15 +6,17 @@
 from __future__ import annotations
 
 import logging
+import time
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 
 from src.api.config import ApiSettings, get_api_settings
 from src.api.inference import features_from_request, load_model, predict_outage
 from src.api.schemas import HealthResponse, PredictRequest, PredictResponse
 from src.data.preprocess import get_feature_columns
+from src.monitoring.telemetry import instrument_fastapi, setup_telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        setup_telemetry(service_name=settings.app_name)
         try:
             _state["model"] = load_model(settings.model_path)
             _state["load_error"] = None
@@ -42,6 +45,21 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         version=settings.app_version,
         lifespan=lifespan,
     )
+    instrument_fastapi(app)
+
+    @app.middleware("http")
+    async def log_request_metrics(request: Request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        duration_ms = (time.perf_counter() - start) * 1000
+        logger.info(
+            "request method=%s path=%s status=%s duration_ms=%.2f",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_ms,
+        )
+        return response
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
@@ -61,6 +79,11 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
 
         features = features_from_request(payload.model_dump())
         result = predict_outage(model, features)
+        logger.info(
+            "prediction outage_probability=%.4f outage_predicted=%s",
+            result.get("outage_probability", 0.0),
+            result.get("outage_predicted"),
+        )
         return PredictResponse(**result)
 
     return app

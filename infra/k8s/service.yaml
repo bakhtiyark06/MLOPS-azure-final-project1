@@ -1,0 +1,16 @@
+# Member D — LoadBalancer service for AKS production API
+apiVersion: v1
+kind: Service
+metadata:
+  name: outage-predictor
+  labels:
+    app: outage-predictor
+spec:
+  type: LoadBalancer
+  selector:
+    app: outage-predictor
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+      protocol: TCP

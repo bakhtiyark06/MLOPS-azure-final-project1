@@ -1,0 +1,45 @@
+name: OpenRouter Report
+
+on:
+  workflow_dispatch:
+
+jobs:
+  openrouter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate data and evaluate
+        run: |
+          python scripts/generate_sample_data.py --n-samples 2000
+          python scripts/train_model.py
+          python scripts/evaluate_model.py
+
+      - name: Run drift check
+        run: python scripts/run_drift_check.py
+        continue-on-error: true
+
+      - name: Generate OpenRouter LLM report
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL || 'openai/gpt-4o-mini' }}
+        run: |
+          python scripts/openrouter_report.py --drift-report reports/drift/drift_summary.json
+
+      - name: Upload OpenRouter reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: openrouter-reports
+          path: reports/openrouter/
+          retention-days: 14
