@@ -111,16 +111,34 @@ def test_predict_unavailable_without_model(tmp_path, sample_payload):
     assert response.status_code == 503
 
 
-def test_local_hub_home(api_client):
+def test_dashboard_home(api_client):
     response = api_client.get("/")
     assert response.status_code == 200
-    assert "Local Hub" in response.text or "local hub" in response.text.lower()
-    assert "/docs" in response.text
+    html = response.text
+    assert "Website Outage Prediction Dashboard" in html
+    assert "Run Full Local Pipeline" in html
+    assert "Check Website Metrics" in html
+    assert 'class="tab-nav"' in html
+    assert "/docs" in html
+    assert "/health" in html
+    assert "/monitoring/eval-metrics" in html
+    assert "/monitoring/drift-summary" in html
+    assert "/monitoring/status" in html
+    assert "Predict Outage Risk" in html
+    assert "How to Predict Any Website" in html
+
+
+def test_dashboard_static_assets(api_client):
+    css = api_client.get("/static/dashboard.css")
+    js = api_client.get("/static/dashboard.js")
+    assert css.status_code == 200
+    assert js.status_code == 200
+    assert "tab-nav" in css.text
 
 
 def test_monitoring_status(api_client):
     response = api_client.get("/monitoring/status")
     assert response.status_code == 200
     body = response.json()
-    assert body["health"] == "http://localhost:8000/health"
+    assert body["health"] == "http://127.0.0.1:8000/health"
     assert "reports" in body

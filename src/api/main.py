@@ -87,7 +87,22 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         )
         return PredictResponse(**result)
 
-    register_local_dashboard(app)
+    def reload_model() -> None:
+        try:
+            _state["model"] = load_model(settings.model_path)
+            _state["load_error"] = None
+            logger.info("Reloaded model from %s", settings.model_path)
+        except FileNotFoundError as exc:
+            _state["model"] = None
+            _state["load_error"] = str(exc)
+            logger.warning("Model reload failed: %s", exc)
+
+    register_local_dashboard(
+        app,
+        get_state=lambda: _state,
+        reload_model=reload_model,
+        settings=settings,
+    )
     return app
 
 

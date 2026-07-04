@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Website Outage Prediction Dashboard</title>
+  <link rel="stylesheet" href="/static/dashboard.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <h1>Website Outage Prediction Dashboard</h1>
+      <p class="subtitle">
+        MLOps demo control center — run the local pipeline, check public URLs,
+        predict outage risk, and monitor model health from one dashboard.
+      </p>
+      <p class="subtitle note-banner">
+        The dashboard can run the local demo workflow and prediction flow from the browser.
+        The app itself still must be running either locally with FastAPI or deployed on Azure.
+        Once it is running, users can operate the demo from the dashboard without manually
+        running each pipeline command.
+      </p>
+      <div class="status-row">
+        <div class="status-card">
+          <div class="label">Quality Gate</div>
+          <div class="value {{GATE_CLASS}}">{{GATE_TEXT}}</div>
+        </div>
+        <div class="status-card">
+          <div class="label">Drift Report</div>
+          <div class="value">{{DRIFT_LABEL}}</div>
+        </div>
+        <div class="status-card">
+          <div class="label">OpenRouter</div>
+          <div class="value">{{OPENROUTER_LABEL}}</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tab-nav" aria-label="Dashboard navigation">
+    {{NAV_TABS}}
+  </nav>
+
+  <main>
+    <section id="system-status">
+      <h2>System Status</h2>
+      <div class="card">
+        <div class="status-grid" id="system-status-grid">
+          <div class="status-item"><span class="label">API health</span><span class="value" id="ss-api">—</span></div>
+          <div class="status-item"><span class="label">Model loaded</span><span class="value" id="ss-model">—</span></div>
+          <div class="status-item"><span class="label">Data exists</span><span class="value" id="ss-data">—</span></div>
+          <div class="status-item"><span class="label">Model file exists</span><span class="value" id="ss-model-file">—</span></div>
+          <div class="status-item"><span class="label">Evaluation status</span><span class="value" id="ss-eval">—</span></div>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" id="btn-refresh-status">Refresh System Status</button>
+        </div>
+        <div class="loading" id="status-loading">Refreshing status…</div>
+        <div class="timeline" id="workflow-timeline">
+          <div class="timeline-step" data-step="health">1. API health</div>
+          <div class="timeline-step" data-step="data">2. Data ready</div>
+          <div class="timeline-step" data-step="model">3. Model trained</div>
+          <div class="timeline-step" data-step="eval">4. Quality gate</div>
+          <div class="timeline-step" data-step="predict">5. Predict risk</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pipeline">
+      <h2>Run Local MLOps Demo Pipeline</h2>
+      <div class="card prose">
+        <p>Runs generate → ingest/validate → train → evaluate locally. Azure upload is skipped unless you use the CLI ingest script separately.</p>
+        <div class="btn-row">
+          <button type="button" class="btn-primary" id="btn-run-pipeline">Run Full Local Pipeline</button>
+        </div>
+        <div class="loading" id="pipeline-loading">Running local pipeline… this may take a minute.</div>
+        <div class="error-msg" id="pipeline-error"></div>
+        <div class="pipeline-steps" id="pipeline-steps"></div>
+        <p class="prose" id="pipeline-message"></p>
+      </div>
+    </section>
+
+    <section id="url-check">
+      <h2>Check Public Website URL</h2>
+      <div class="card">
+        <div class="field">
+          <label for="website-url">Website URL</label>
+          <span class="hint">Public http:// or https:// URL (not localhost or private IPs)</span>
+          <input type="url" id="website-url" placeholder="https://example.com" />
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-primary" id="btn-check-url">Check Website Metrics</button>
+        </div>
+        <div class="loading" id="url-loading">Probing website (5 requests)…</div>
+        <div class="error-msg" id="url-error"></div>
+        <p class="prose" id="url-note"></p>
+      </div>
+    </section>
+
+    <section id="predict">
+      <h2>Predict Outage Risk</h2>
+      <div class="grid-2">
+        <div class="card">
+          <form id="predict-form" onsubmit="return false;">
+            <div class="form-grid">
+              <div class="field">
+                <label for="response_time_ms">Response Time (ms)</label>
+                <span class="hint">Average time for the server to respond</span>
+                <input type="number" id="response_time_ms" name="response_time_ms" min="0" step="any" />
+              </div>
+              <div class="field">
+                <label for="status_code">HTTP Status Code</label>
+                <span class="hint">200 = OK, 500 = server error</span>
+                <input type="number" id="status_code" name="status_code" min="100" max="599" step="1" />
+              </div>
+              <div class="field">
+                <label for="error_rate">Error Rate (0–1)</label>
+                <span class="hint">Fraction of failed requests (0.01 = 1%)</span>
+                <input type="number" id="error_rate" name="error_rate" min="0" max="1" step="any" />
+              </div>
+              <div class="field">
+                <label for="latency_p95_ms">P95 Latency (ms)</label>
+                <span class="hint">95th percentile response latency</span>
+                <input type="number" id="latency_p95_ms" name="latency_p95_ms" min="0" step="any" />
+              </div>
+              <div class="field">
+                <label for="request_count">Request Count</label>
+                <span class="hint">Number of requests in the measurement window</span>
+                <input type="number" id="request_count" name="request_count" min="0" step="any" />
+              </div>
+              <div class="field">
+                <label for="cpu_usage_percent">CPU Usage (%)</label>
+                <span class="hint">Editable — use real values if you own the site, or demo estimates</span>
+                <input type="number" id="cpu_usage_percent" name="cpu_usage_percent" min="0" max="100" step="any" />
+              </div>
+              <div class="field">
+                <label for="memory_usage_percent">Memory Usage (%)</label>
+                <span class="hint">Editable — defaults to 50 when checking a public URL</span>
+                <input type="number" id="memory_usage_percent" name="memory_usage_percent" min="0" max="100" step="any" />
+              </div>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn-secondary" id="btn-healthy">Load Healthy Example</button>
+              <button type="button" class="btn-secondary" id="btn-outage">Load Outage Risk Example</button>
+              <button type="button" class="btn-ghost" id="btn-clear">Clear Form</button>
+              <button type="button" class="btn-primary" id="btn-predict">Predict Outage Risk</button>
+            </div>
+            <div class="loading" id="loading">Running prediction…</div>
+            <div class="error-msg" id="error-msg"></div>
+          </form>
+        </div>
+        <div class="card">
+          <h3 class="card-title">Prediction Result</h3>
+          <div class="result-panel" id="result-panel">
+            <div class="result-badge" id="result-badge">—</div>
+            <p><strong>Outage probability:</strong> <span id="result-probability">—</span></p>
+            <div class="risk-meter"><div class="risk-meter-fill" id="risk-meter-fill"></div></div>
+            <p id="result-detail" class="prose"></p>
+          </div>
+          <p class="prose" id="result-placeholder">Enter metrics and click <strong>Predict Outage Risk</strong> to see results.</p>
+          <h3 class="card-title spaced">Risk Factor Analysis</h3>
+          <div class="explain-cards">
+            <div class="explain-card ok" id="explain-response_time_ms">Response time</div>
+            <div class="explain-card ok" id="explain-status_code">HTTP status</div>
+            <div class="explain-card ok" id="explain-error_rate">Error rate</div>
+            <div class="explain-card ok" id="explain-latency_p95_ms">P95 latency</div>
+            <div class="explain-card ok" id="explain-cpu_usage_percent">CPU usage</div>
+            <div class="explain-card ok" id="explain-memory_usage_percent">Memory usage</div>
+            <div class="explain-card ok" id="explain-request_count">Request volume</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how-model-works">
+      <h2>How the Model Works</h2>
+      <div class="card">
+        <div class="flow-steps">
+          <span class="flow-step">1. URL or metrics entered</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">2. Public metrics checked (URL mode)</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">3. Form filled</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">4. API receives JSON</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">5. ML model predicts</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">6. Risk score returned</span>
+        </div>
+        <p class="prose">The dashboard sends metrics to <code>POST /predict</code>. The trained Random Forest returns <code>outage_predicted</code> and <code>outage_probability</code>, then explanation cards highlight risky inputs.</p>
+      </div>
+    </section>
+
+    <section id="guide">
+      <h2>How to Predict Any Website</h2>
+      <div class="card prose">
+        <ol>
+          <li>Type a public website URL and click <strong>Check Website Metrics</strong>.</li>
+          <li>The app measures status code, response time, latency, and simple error rate from 5 probes.</li>
+          <li>Those values auto-fill the prediction form.</li>
+          <li>CPU and memory are private — use real values if you own the website, or edit the demo defaults.</li>
+          <li>Click <strong>Predict Outage Risk</strong>.</li>
+          <li>Read outage probability and the risk explanation cards.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="public-url">
+      <h2>What Public URL Checking Can and Cannot Do</h2>
+      <div class="grid-2">
+        <div class="card prose">
+          <strong>Can measure:</strong>
+          <ul>
+            <li>HTTP status code</li>
+            <li>Response time</li>
+            <li>Basic latency (P95 from probes)</li>
+            <li>Whether the website responds</li>
+            <li>Simple error rate from repeated checks</li>
+          </ul>
+        </div>
+        <div class="card prose">
+          <strong>Cannot measure unless you own the website:</strong>
+          <ul>
+            <li>Real CPU usage</li>
+            <li>Real memory usage</li>
+            <li>Internal request count</li>
+            <li>Server logs</li>
+            <li>Full application error rate</li>
+            <li>Infrastructure health</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="real-world">
+      <h2>Real-World Workflow</h2>
+      <div class="card prose">
+        <ol>
+          <li>Azure Monitor or Application Insights collects live website metrics.</li>
+          <li>Metrics are sent to the prediction API.</li>
+          <li>The model predicts outage probability.</li>
+          <li>If risk is high, the DevOps team gets alerted.</li>
+          <li>Engineers investigate before the website goes down.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="demo-script">
+      <h2>Demo Script: What to Say</h2>
+      <div class="card prose">
+        <p><em>“Our model does not predict from the website name alone. It predicts from monitoring metrics. In a real company, these metrics come from Azure Monitor, Application Insights, logs, and health checks. For this demo, we manually enter healthy and unhealthy website metrics to show how the model predicts outage risk.”</em></p>
+        <p><strong>Drift status:</strong> {{DRIFT_SUMMARY}}</p>
+      </div>
+    </section>
+
+    <section id="reports">
+      <h2>Reports &amp; Monitoring</h2>
+      <div class="card prose">
+        <p>Use the tab navigation for Swagger docs, health check, eval metrics, drift summary, combined status, drift HTML report, OpenRouter summary, and architecture diagram.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Website Outage Prediction MLOps — Local Dashboard · Swagger at <a href="/docs">/docs</a>
+  </footer>
+
+  <script src="/static/dashboard.js"></script>
+</body>
+</html>
