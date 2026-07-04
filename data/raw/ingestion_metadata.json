@@ -1,7 +1,7 @@
 {
-  "dataset_hash": "59e3d6fc7787e39a5511b4e3cc512266a96235ccf0ff1824b67503d75c6ade39",
-  "row_count": 100,
-  "ingested_at_utc": "2026-07-02T21:29:21.990879+00:00",
+  "dataset_hash": "c8a402636c98e5c5c9e764814563c74746b31e11ac92d081024f70ed3b86a8e0",
+  "row_count": 2000,
+  "ingested_at_utc": "2026-07-03T03:40:47.890663+00:00",
   "blob_url": null,
   "dvc_tracked": false,
   "stage": "01-data-ingestion",
