@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-07-06T22:04:37.634348+00:00",
+  "dataset_drift": true,
+  "drift_detected": true,
+  "drift_score": 0.1429,
+  "drifted_columns": [
+    "latency_p95_ms"
+  ],
+  "column_drifts": {
+    "cpu_usage_percent": false,
+    "error_rate": false,
+    "latency_p95_ms": true,
+    "memory_usage_percent": false,
+    "request_count": false,
+    "response_time_ms": false,
+    "status_code": false
+  },
+  "reference_rows": 500,
+  "current_rows": 300,
+  "summary": "Moderate drift detected across 1 of 7 features: latency_p95_ms.",
+  "recommendation": "Investigate drifted features and compare recent production changes.",
+  "method": "evidently",
+  "report_path": "reports\\drift\\drift_report.html",
+  "json_path": "reports\\drift\\drift_report.json"
+}

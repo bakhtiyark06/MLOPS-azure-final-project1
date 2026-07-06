@@ -2,10 +2,10 @@
 
 | Member | GitHub username | Primary stages | Backup stages |
 |--------|-----------------|----------------|---------------|
-| A      | (fill in)       | **Stage 01 — Data/DVC/Blob** (COMPLETE) | 6 API         |
-| B      | (fill in)       | 2-4 Train/MLflow/Gate/Registry | 8 Tests |
-| C      | Sana            | **Stages 05–07 Docker/API/CI/ACI** (COMPLETE) | 9 Monitoring |
-| D      | (fill in)       | **Stages 8–10 AKS/Monitor/Drift/OpenRouter** (COMPLETE) | 1 Data |
+| A      | Ameer (`Ameer's-Branch`) | **Stage 01 — Data/DVC/Blob** (COMPLETE) | 6 API |
+| B      | Bakhtiyar (`Bakhtiyar's-Branch`) | **Stages 02–04 Train/MLflow/Gate/Registry** (COMPLETE) | 8 Tests |
+| C      | Sana (`Sana's-branch`) | **Stages 05–07 Docker/API/CI/ACI** (COMPLETE) | 9 Monitoring |
+| D      | Fazal (`Fazal's-Branch`) | **Stages 8–10 AKS/Monitor/Drift/OpenRouter** (COMPLETE) | 1 Data |
 
 ## Demo prep
 

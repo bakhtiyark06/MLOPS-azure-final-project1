@@ -1,0 +1,9 @@
+{
+  "f1_score": 0.9928057553956835,
+  "accuracy": 0.995,
+  "gate_passed": true,
+  "thresholds": {
+    "min_f1_score": 0.75,
+    "min_accuracy": 0.8
+  }
+}

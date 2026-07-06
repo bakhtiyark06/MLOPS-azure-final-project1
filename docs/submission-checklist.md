@@ -1,6 +1,6 @@
 # Final Submission Checklist
 
-Status on the **test** branch. Repo-side items are documented below; live Azure demo evidence is pending final rehearsal.
+Status on **`main`** branch after local rehearsal automation.
 
 ---
 
@@ -8,34 +8,70 @@ Status on the **test** branch. Repo-side items are documented below; live Azure 
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Clean GitHub repository | Complete | Active development on `test` |
+| Clean GitHub repository | Complete | [bakhtiyark06/MLOPS-azure-final-project1](https://github.com/bakhtiyark06/MLOPS-azure-final-project1) |
 | Root README | Complete | [README.md](../README.md) |
 | GitHub Actions workflows | Complete | 6 workflows in `.github/workflows/` |
 | Dockerfile | Complete | Root `Dockerfile` |
 | Pytest suite | Complete | ≥70% coverage gate in CI |
-| CI badge in README | Complete | Green when `main` CI passes |
-| No secrets committed | Complete | Placeholders only |
+| CI badge in README | Complete | Points to `bakhtiyark06` org |
+| No secrets committed | Complete | Placeholders only; `.env` gitignored |
 | `docs/` folder structure | Complete | Submission index, pipeline, architecture, evidence |
-| Architecture diagram | Complete | `architecture-diagram.mmd` + interactive `/demo/flow` |
-| Python author tags | Partial | See [code-documentation/audit-report.md](code-documentation/audit-report.md) |
+| Architecture diagram | Complete | Mermaid PNGs + interactive `/demo/flow` |
+| Python author tags | Complete | 63/63 — `py scripts/audit_python_docs.py` |
+| Local evidence automation | Complete | `py scripts/collect_local_evidence.py` |
+| Submission rehearsal script | Complete | `py scripts/run_submission_rehearsal.py` |
+| Azure setup (Windows) | Complete | `scripts/setup_azure_env.ps1` + `run_azure_phase2.ps1` |
+| MLflow → Azure ML tracking | Complete | Set `MLFLOW_TRACKING_URI` via setup script |
 
 ---
 
-## Pending — demo rehearsal items
+## Completed locally (evidence files)
 
-| Item | Live Verification |
-|------|-------------------|
-| Branch protection evidence | Pending final demo run |
-| PR history screenshot | Pending final demo run |
-| Tagged release v1.0.0 | Pending final demo run |
-| Full team demo rehearsal | Pending final demo run |
-| Azure ML training logs screenshot | Pending final demo run |
-| Model registry screenshot | Pending final demo run |
-| ACR image screenshot | Pending final demo run |
-| AKS / API demo screenshot | Pending final demo run |
-| Azure Monitor alert screenshot | Pending final demo run |
-| OpenRouter integration screenshot | Pending final demo run |
-| Evidently drift report (local OK; Azure schedule optional) | Pending final demo run |
+After `py scripts/run_submission_rehearsal.py --allow-drift-fail`:
+
+| Item | Evidence path |
+|------|----------------|
+| Quality gate pass | `docs/evidence/evidence-06-quality-gate-pass.json` |
+| Evidently drift report | `docs/evidence/evidence-10-drift-report.html` |
+| Drift summary JSON | `docs/evidence/evidence-10-drift-summary.json` |
+| OpenRouter summary | `docs/evidence/evidence-12-openrouter-summary.md` |
+| Manifest | `docs/evidence/evidence-manifest.json` |
+
+**Still capture as PNG** (browser screenshots): CI badge, PR history, branch protection, release tag.
+
+---
+
+## Pending — requires GitHub / Azure Portal (manual)
+
+| Item | How to complete |
+|------|-----------------|
+| Branch protection evidence | GitHub → Settings → Branches → screenshot |
+| PR history screenshot | GitHub → Pull requests |
+| Tagged release **v1.0.0** | `git tag v1.0.0 && git push origin v1.0.0` |
+| Azure ML training logs | `az login` → `setup_azure_env.ps1` → train with `MLFLOW_TRACKING_URI` |
+| Model registry screenshot | `py scripts/register_model.py` (no `--dry-run`) |
+| ACR image screenshot | `py scripts/build_image.py --acr acrwoutagemlops --tag v1.0.0 --push` |
+| AKS / API demo | `py scripts/run_azure_phase2.ps1` or `infra/deploy_aks.py` |
+| Azure Monitor alert | `py infra/setup_alerts.py --email you@example.com` |
+| Full team live demo | See [demo-script.md](demo-script.md) |
+
+---
+
+## Quick verification commands
+
+```powershell
+cd MLOPS-azure-final-project1
+.\.venv\Scripts\python.exe scripts\run_submission_rehearsal.py --allow-drift-fail
+.\.venv\Scripts\python.exe scripts\check_local.py
+.\.venv\Scripts\python.exe scripts\run_local.py
+```
+
+Azure phase (after `az login`):
+
+```powershell
+.\scripts\setup_azure_env.ps1
+.\scripts\run_azure_phase2.ps1
+```
 
 ---
 
@@ -43,25 +79,6 @@ Status on the **test** branch. Repo-side items are documented below; live Azure 
 
 | Item | Status |
 |------|--------|
-| Merge `test` → `main` | If required by instructor |
-| Evidence PNGs in `docs/evidence/` | Pending final demo run |
-| Instructor submission portal | TODO — add course link |
-| CI green on `main` | After merge and secrets configured |
-
----
-
-## Quick verification commands
-
-```powershell
-py -m pytest tests/test_architecture_page.py -q
-py scripts/check_local.py
-py scripts/audit_python_docs.py
-```
-
-Azure setup (when ready for live verification):
-
-```powershell
-az login
-py scripts/build_image.py --acr acrwoutagemlops --tag v1.0.0 --push
-py infra/deploy_aks.py --wait-health
-```
+| Evidence PNGs in `docs/evidence/` | Partial — JSON/HTML collected; PNGs manual |
+| Instructor submission portal | Add course link when provided |
+| CI green on `main` | Verify on GitHub Actions after push |

@@ -17,6 +17,26 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SCAN_DIRS = ("src", "scripts", "infra", "tests")
 AUTHOR_RE = re.compile(r"^#\s*Author:\s*(.+)", re.MULTILINE)
 
+# Map author tag text to team owner for submission file-ownership table
+OWNER_FROM_AUTHOR: list[tuple[str, str]] = [
+    ("Member A", "Ameer (Member A)"),
+    ("Member B", "Bakhtiyar (Member B)"),
+    ("Member C", "Sana (Member C)"),
+    ("Member D", "Fazal (Member D)"),
+    ("Team", "Team"),
+    ("Presentation layer", "Sana (Member C)"),
+]
+
+
+def owner_from_author_tag(author_value: str) -> str:
+    """Derive submission owner name from file author tag."""
+    for prefix, owner in OWNER_FROM_AUTHOR:
+        if prefix.lower() in author_value.lower():
+            return owner
+    if author_value and "TODO" not in author_value:
+        return author_value
+    return "Team"
+
 
 @dataclass
 class FileAudit:
@@ -182,8 +202,10 @@ def write_file_ownership(audits: list[FileAudit], out_path: Path) -> None:
     ]
     for a in audits:
         tag = a.author_value if a.has_author else "TODO"
+        owner = owner_from_author_tag(tag)
+        commenting = "Yes" if a.comment_density_pct >= 15 or a.path.endswith("__init__.py") else "Review"
         lines.append(
-            f"| `{a.path}` | {tag} | TODO | TODO | TODO | TODO |"
+            f"| `{a.path}` | {tag} | {owner} | Team | Rehearsal | {commenting} |"
         )
     out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

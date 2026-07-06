@@ -1,0 +1,11 @@
+{
+  "collected_at": "2026-07-06T22:05:12.376739+00:00",
+  "evidence_dir": "docs\\evidence",
+  "evidence-10-drift-report.html": "ok",
+  "evidence-10-drift-summary.json": "ok",
+  "evidence-06-quality-gate-pass.json": "ok",
+  "evidence-12-openrouter-summary.md": "ok",
+  "evidence-12-openrouter-summary-fallback.md": "ok",
+  "evidence-data-ingestion-metadata.json": "ok",
+  "evidence-model-outage_model.joblib": "ok"
+}

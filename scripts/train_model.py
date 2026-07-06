@@ -4,6 +4,7 @@
 """CLI entrypoint for Stage 02 — model training with MLflow logging."""
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -34,8 +35,12 @@ def _read_dataset_hash_safe() -> str:
 
 
 def _setup_mlflow() -> str:
-    """Configure MLflow experiment from azure config."""
+    """Configure MLflow tracking URI and experiment from env or azure config."""
     azure_cfg = load_azure_config() or {}
+    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI")
+    if tracking_uri:
+        mlflow.set_tracking_uri(tracking_uri)
+        print(f"  MLflow tracking URI: {tracking_uri}")
     experiment_name = azure_cfg.get("mlflow_experiment_name", "website-outage-prediction")
     mlflow.set_experiment(experiment_name)
     return experiment_name

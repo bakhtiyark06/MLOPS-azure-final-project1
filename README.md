@@ -2,7 +2,7 @@
 
 [![CI — Tests and Lint](https://github.com/bakhtiyark06/MLOPS-azure-final-project1/actions/workflows/ci.yml/badge.svg)](https://github.com/bakhtiyark06/MLOPS-azure-final-project1/actions/workflows/ci.yml)
 
-> **Azure deployment status:** Live Azure ML, ACI, AKS, Azure Monitor, and production secrets are **documented but not yet configured** in this phase. See [docs/submission-checklist.md](docs/submission-checklist.md) and [docs/azure-setup.md](docs/azure-setup.md) (Phase 2).
+> **Azure deployment status:** Scripts ready (`scripts/setup_azure_env.ps1`, `scripts/run_azure_phase2.ps1`). Live Azure screenshots and deploy require `az login` and team subscription access. See [docs/submission-checklist.md](docs/submission-checklist.md).
 
 ## Project summary
 
@@ -66,6 +66,12 @@ py scripts/evaluate_model.py
 
 ```powershell
 py scripts/run_local.py
+```
+
+**One-command submission rehearsal** (pipeline + tests + local evidence):
+
+```powershell
+py scripts/run_submission_rehearsal.py --allow-drift-fail
 ```
 
 Open **http://127.0.0.1:8000/** (dashboard) or **http://127.0.0.1:8000/docs** (Swagger).
