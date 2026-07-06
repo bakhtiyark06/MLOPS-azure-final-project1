@@ -461,7 +461,7 @@
       if (panel) panel.classList.toggle("active", id === panelId);
     });
 
-    document.querySelectorAll(".tab-nav a[data-section]").forEach(function (tab) {
+    document.querySelectorAll(".tab-nav__link[data-section]").forEach(function (tab) {
       const href = tab.getAttribute("href");
       const isPanel = href === "#" + panelId;
       const isSection = sectionId && href === "#" + sectionId;
@@ -686,7 +686,7 @@
   }
 
   function initTabs() {
-    document.querySelectorAll(".tab-nav a[data-section]").forEach(function (tab) {
+    document.querySelectorAll(".tab-nav__link[data-section]").forEach(function (tab) {
       tab.addEventListener("click", function (e) {
         e.preventDefault();
         const target = tab.getAttribute("href");

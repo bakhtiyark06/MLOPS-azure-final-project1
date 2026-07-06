@@ -1,3 +1,7 @@
+# Author: TODO - Team Member Name
+# Responsibility: TODO - API Schemas
+# Last Reviewed: TODO
+
 """Request and response schemas for the prediction API."""
 
 from __future__ import annotations

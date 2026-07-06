@@ -45,6 +45,16 @@ def test_demo_flow_returns_200_with_controls(client: TestClient) -> None:
     assert 'id="btn-prev"' in body
     assert 'id="btn-next"' in body
     assert "architecture.js" in body
+    assert 'class="arch-top-nav"' in body
+    assert 'aria-label="Return to Dashboard"' in body
+    assert 'href="/"' in body
+    assert "Submission Architecture Coverage" not in body
+    assert 'class="arch-coverage"' not in body
+    assert "Select a component" not in body
+    assert 'id="detail-panel"' not in body
+    title_pos = body.find('id="arch-title"')
+    nav_pos = body.find('class="arch-top-nav"')
+    assert nav_pos >= 0 and title_pos >= 0 and nav_pos < title_pos
 
 
 def test_demo_flow_includes_rubric_labels_in_json(client: TestClient) -> None:
@@ -55,6 +65,9 @@ def test_demo_flow_includes_rubric_labels_in_json(client: TestClient) -> None:
     assert "Quality Gate" in labels
     assert "Azure ML Registry" in labels
     assert "OpenRouter API" in labels or "OpenRouter" in str(data)
+    assert "Azure Key Vault" in labels
+    assert "AKS Ingress" in labels
+    assert "deliverableCoverage" not in data
 
 
 def test_demo_flow_page_has_eight_infrastructure_sections(client: TestClient) -> None:
@@ -97,6 +110,9 @@ def test_architecture_css_has_reduced_motion_rule(client: TestClient) -> None:
     css = css_response.text
     assert "prefers-reduced-motion" in css
     assert "reduced-motion" in css
+    assert "arch-top-nav" in css
+    assert "arch-coverage" not in css
+    assert ".arch-detail" not in css
 
 
 def test_health_and_dashboard_unchanged(client: TestClient) -> None:

@@ -30,7 +30,7 @@ The canvas groups components into large Azure-style sections:
 7. **AI REPORTING** — OpenRouter summaries and demo explanations
 8. **DATA FLOW** — prepared features bridge
 
-Click a **stage tab** to focus one section; others dim. Presenter notes appear in the detail panel.
+Click a **stage tab** to focus one section; others dim. Presenter notes appear below the diagram.
 
 ### 14-step timeline
 
@@ -45,16 +45,6 @@ Use **◀** / **▶** (or arrow keys) to step through the timeline when Live Flo
 1. Click **Live Flow** — the diagram walks through all 23 `liveFlow` steps (~1.5s each).
 2. Animated packets travel along SVG edges; nodes glow active (bright), complete (soft), or dimmed (upcoming).
 3. Use **Pause** / **Resume**, **Reset**, or **◀** / **▶** to control pacing during the tour.
-4. Click any node anytime to read the expanded detail panel (Overview, IO, Code, Ops, Example Payload).
-
-### Detail panel
-
-Each node exposes structured metadata from `architecture-nodes.json`:
-
-- Purpose, why, inputs, outputs
-- Files, Azure resources, secrets
-- GitHub workflow, Docker resources, commands, env vars
-- Example payload (when available)
 
 ### Accessibility
 

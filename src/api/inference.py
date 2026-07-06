@@ -1,3 +1,7 @@
+# Author: TODO - Team Member Name
+# Responsibility: TODO - API / Inference
+# Last Reviewed: TODO
+
 """Model loading and prediction helpers for the API."""
 
 from __future__ import annotations

@@ -651,7 +651,57 @@
         "files": "infra/deploy_aks.py, infra/k8s/",
         "azure": "AKS aks-outage-predictor",
         "secrets": "AZURE_CREDENTIALS",
+        "next": "AKS Ingress",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "aks_ingress",
+      "swimlane": "deploy",
+      "label": "AKS Ingress",
+      "short": "LoadBalancer ingress",
+      "rubric": [
+        "AKS ingress / LoadBalancer"
+      ],
+      "detail": {
+        "what": "Kubernetes LoadBalancer Service routes port 80 to API pods.",
+        "why": "Public HTTP access to production inference.",
+        "input": "AKS Service manifest",
+        "output": "External IP / ingress",
+        "files": "infra/k8s/service.yaml",
+        "azure": "AKS LoadBalancer",
+        "secrets": "\u2014",
         "next": "Public Prediction Endpoint",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "key_vault",
+      "swimlane": "deploy",
+      "label": "Azure Key Vault",
+      "short": "Secrets store (optional)",
+      "rubric": [
+        "Azure Key Vault"
+      ],
+      "detail": {
+        "what": "Optional secure store for API keys and Azure credentials.",
+        "why": "Alternative to GitHub Secrets for enterprise deployments.",
+        "input": "Secret names",
+        "output": "Resolved credentials at runtime",
+        "files": "src/utils/secrets.py",
+        "azure": "Azure Key Vault",
+        "secrets": "GitHub Secrets primary in this project",
+        "next": "GitHub Actions deploy",
         "githubWorkflow": "\u2014",
         "dockerResources": "\u2014",
         "commands": "\u2014",
@@ -1205,8 +1255,18 @@
     },
     {
       "from": "aks",
+      "to": "aks_ingress",
+      "type": "deploy"
+    },
+    {
+      "from": "aks_ingress",
       "to": "endpoint",
       "type": "deploy"
+    },
+    {
+      "from": "key_vault",
+      "to": "github_actions",
+      "type": "auth"
     },
     {
       "from": "endpoint",
@@ -1371,6 +1431,7 @@
       "nodeIds": [
         "github_repo",
         "github_actions",
+        "key_vault",
         "docker",
         "acr",
         "aci",
@@ -1383,6 +1444,7 @@
       "title": "SERVING",
       "swimlane": "serving_section",
       "nodeIds": [
+        "aks_ingress",
         "fastapi",
         "predict_endpoint",
         "health_endpoint",
@@ -1479,6 +1541,7 @@
       "nodeIds": [
         "github_repo",
         "github_actions",
+        "key_vault",
         "docker",
         "acr",
         "aci",
@@ -1491,6 +1554,7 @@
       "label": "SERVING",
       "icon": "serving",
       "nodeIds": [
+        "aks_ingress",
         "fastapi",
         "predict_endpoint",
         "health_endpoint",

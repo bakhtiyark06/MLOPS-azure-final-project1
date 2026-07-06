@@ -1,117 +1,50 @@
 # Website Outage Prediction MLOps Pipeline on Azure
 
-[![CI — Tests and Lint](https://github.com/YOUR_ORG/MLOPS-azure-final-project1/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_ORG/MLOPS-azure-final-project1/actions/workflows/ci.yml)
+[![CI — Tests and Lint](https://github.com/bakhtiyark06/MLOPS-azure-final-project1/actions/workflows/ci.yml/badge.svg)](https://github.com/bakhtiyark06/MLOPS-azure-final-project1/actions/workflows/ci.yml)
 
-End-to-end MLOps CI/CD pipeline that predicts whether a website is likely to have an outage within one hour, based on monitoring metrics (response time, status code, error rate, latency, request count, CPU, memory).
+> **Azure deployment status:** Live Azure ML, ACI, AKS, Azure Monitor, and production secrets are **documented but not yet configured** in this phase. See [docs/submission-checklist.md](docs/submission-checklist.md) and [docs/azure-setup.md](docs/azure-setup.md) (Phase 2).
 
-## Project structure
+## Project summary
+
+End-to-end MLOps CI/CD pipeline that predicts whether a website is likely to experience an outage within one hour, using monitoring metrics (response time, HTTP status, error rate, P95 latency, request volume, CPU, and memory).
+
+## Problem statement
+
+Operations teams need early warning before customer-facing outages. Reactive alerting after downtime is costly. This project trains a classifier on website telemetry, deploys it as a production API, and monitors model health with drift detection and LLM-generated summaries for stakeholders.
+
+## Solution overview
+
+```
+Developer commit → GitHub Actions CI/CD → Data (DVC/Blob) → Train (MLflow)
+  → Quality gate → Model registry → Docker build → ACR
+  → ACI staging → AKS production → /predict API
+  → Application Insights → Evidently drift → Azure Monitor alerts → OpenRouter reports
+```
+
+Interactive architecture tour: **http://127.0.0.1:8000/demo/flow** (after starting locally).
+
+## Tech stack
+
+Python 3.11+ · scikit-learn · pandas · FastAPI · uvicorn · Docker · Azure ML · Azure Blob Storage · DVC · MLflow · ACI · AKS · ACR · Application Insights · Azure Monitor · Evidently · OpenRouter · GitHub Actions · pytest
+
+## Folder structure
 
 | Folder | Purpose |
 |--------|---------|
 | `configs/` | Model thresholds and Azure resource names (no secrets) |
 | `data/` | Raw, processed, and reference datasets (gitignored) |
-| `docs/` | Architecture diagram, stage walkthroughs, Azure setup |
-| `infra/` | Azure provisioning and ACI/AKS deploy scripts |
+| `docs/` | Submission docs, architecture, pipeline walkthroughs, evidence checklist |
+| `infra/` | ACI/AKS deploy scripts and Kubernetes manifests |
 | `scripts/` | Pipeline entrypoints (ingest, train, evaluate, deploy helpers) |
 | `src/` | Core Python modules (data, models, API, monitoring) |
-| `tests/` | pytest suite (≥70% coverage) |
+| `tests/` | pytest suite (≥70% coverage gate) |
 | `.github/workflows/` | GitHub Actions CI/CD |
 
-## Local Azure connection (one command)
+Full documentation index: [docs/README.md](docs/README.md)
 
-After `az login`, run from the project root:
+## How to run locally
 
-```bash
-cd MLOPS-azure-final-project1
-source scripts/setup_azure_env.sh
-```
-
-This will:
-- Set subscription `4c3c4430-0ce6-48bc-8e33-1947f3876ebd`
-- Use resource group `rg-website-outage-mlops`
-- Create/verify ACR `acrwoutagemlops` and App Insights `outage-predictor-insights`
-- Write `.env` and `configs/azure_config.yaml` (gitignored)
-
-Then deploy staging:
-
-```bash
-python3 scripts/build_image.py --acr acrwoutagemlops --tag v1 --push
-python3 infra/deploy_aci.py --wait-health
-```
-
-For AKS, create the cluster first (use `standard_b2s_v2` in centralus):
-
-```bash
-az aks create --resource-group rg-website-outage-mlops --name aks-outage-predictor \
-  --location centralus --node-count 1 --node-vm-size standard_b2s_v2 \
-  --enable-addons monitoring --attach-acr acrwoutagemlops --generate-ssh-keys
-python3 infra/deploy_aks.py --wait-health
-```
-
-See [docs/azure-setup.md](docs/azure-setup.md) for GitHub Secrets.
-
-## Member D — AKS, monitoring, drift, OpenRouter (complete)
-
-See [docs/stages/stage-08-deployment.md](docs/stages/stage-08-deployment.md) (AKS section), [stage-09-monitoring.md](docs/stages/stage-09-monitoring.md), and [stage-10-openrouter.md](docs/stages/stage-10-openrouter.md).
-
-```powershell
-py scripts/verify_member_d.py
-py scripts/evaluate_model.py
-py infra/deploy_aks.py --wait-health
-py scripts/run_drift_check.py
-py infra/setup_alerts.py --email you@example.com
-py scripts/openrouter_report.py --dry-run
-```
-
-Architecture diagram: [docs/architecture/README.md](docs/architecture/README.md)
-
-### Local hub (single localhost — API + reports)
-
-Start everything on **http://127.0.0.1:8000** (keep the terminal open):
-
-```bash
-python3.11 scripts/run_local.py
-```
-
-Open **http://127.0.0.1:8000/** for the dashboard, or **http://127.0.0.1:8000/docs** for Swagger.
-
-Drift reports auto-generate via `GET /drift` or the dashboard **Drift Summary** card. After each **Predict** or **URL check**, observations append to `artifacts/reports/current_observations.csv`; once 5+ exist, drift refreshes automatically. In production, drift is usually run on a schedule or batch window—not every request.
-
-**OpenRouter summary** reads model metrics (`eval_metrics.json`), quality gate result, drift summary, and dataset hash. Set `OPENROUTER_API_KEY` locally or as the GitHub Secret `OPENROUTER_API_KEY`. Without a key, the API writes a **local fallback** report to `artifacts/reports/openrouter_eval_summary.md`. Generate from the dashboard **OpenRouter Summary** card or `POST /reports/openrouter/run`; fetch with `GET /reports/openrouter`.
-
-Verify the server is running:
-
-```bash
-python3.11 scripts/check_local.py
-```
-
-## Member C — API, Docker, CI, ACI staging (complete)
-
-See [docs/stages/stage-05-containerization.md](docs/stages/stage-05-containerization.md) through [stage-08-deployment.md](docs/stages/stage-08-deployment.md).
-
-```powershell
-py scripts/generate_sample_data.py
-py scripts/train_model.py
-py -m uvicorn src.api.main:app --reload --port 8000
-py -m pytest tests/test_api.py -v
-py scripts/build_image.py --acr <acr> --tag v1 --push
-py infra/deploy_aci.py --wait-health
-```
-
-## Member A — Data pipeline (complete)
-
-See [docs/stages/stage-01-ingestion.md](docs/stages/stage-01-ingestion.md) for full walkthrough.
-
-```powershell
-py scripts/setup_dvc.py --skip-remote
-py scripts/generate_sample_data.py
-py scripts/ingest_data.py --skip-blob
-py -m pytest tests/test_data_ingestion.py -v
-```
-
-## Quick start (local)
-
-### 1. Create virtual environment
+### 1. Virtual environment
 
 ```powershell
 cd MLOPS-azure-final-project1
@@ -121,54 +54,141 @@ pip install -r requirements.txt
 pip install -r requirements-dev.txt
 ```
 
-### 2. Generate data and train
+### 2. Generate data, train, evaluate
 
 ```powershell
 py scripts/generate_sample_data.py
 py scripts/train_model.py
 py scripts/evaluate_model.py
-py scripts/register_model.py
 ```
 
-### 3. Run API locally
+### 3. Start the dashboard + API (recommended)
 
 ```powershell
-py -m uvicorn src.api.main:app --reload --port 8000
+py scripts/run_local.py
 ```
 
-Test: `http://localhost:8000/docs`
+Open **http://127.0.0.1:8000/** (dashboard) or **http://127.0.0.1:8000/docs** (Swagger).
 
-### 4. Run tests
+Verify: `py scripts/check_local.py`
+
+Alternative (API only): `py -m uvicorn src.api.main:app --reload --port 8000`
+
+## How to run tests
 
 ```powershell
 py -m pytest
 ```
 
-## Pipeline stages
+CI enforces ≥70% coverage on `src/` and `scripts/`. Targeted runs:
 
-1. Data ingestion + DVC → `docs/stages/stage-01-ingestion.md`
-2. Model training + MLflow → `docs/stages/stage-02-training.md`
-3. Quality gate → `docs/stages/stage-03-evaluation.md`
-4. Model registry → `docs/stages/stage-04-registry.md`
-5. Docker + FastAPI → `docs/stages/stage-05-containerization.md`
-6. pytest → `docs/stages/stage-06-testing.md`
-7. GitHub Actions → `docs/stages/stage-07-cicd.md`
-8. ACI + AKS deploy → `docs/stages/stage-08-deployment.md`
-9. Monitoring + Evidently → `docs/stages/stage-09-monitoring.md`
-10. OpenRouter LLM → `docs/stages/stage-10-openrouter.md`
+```powershell
+py -m pytest tests/test_api.py tests/test_training.py -v
+```
 
-## Azure setup
+## Docker usage
 
-See [docs/azure-setup.md](docs/azure-setup.md) for resource provisioning and GitHub Secrets.
+Build and run the API container locally:
 
-## Team
+```powershell
+docker build -t outage-predictor:local .
+docker run -p 8000:8000 outage-predictor:local
+```
 
-See [docs/team-roles.md](docs/team-roles.md) for stage ownership (team of 4).
+Push to Azure Container Registry (requires `az login` and ACR access — **pending Azure phase**):
 
-## Demo day
+```powershell
+az acr login --name acrwoutagemlops
+py scripts/build_image.py --acr acrwoutagemlops --tag v1 --push
+```
 
-See [docs/demo-day.md](docs/demo-day.md) for live demo checklist and release tag `v1.0.0`.
+See [docs/pipeline/05-docker-build.md](docs/pipeline/05-docker-build.md).
 
-## Tech stack
+## GitHub Actions / CI overview
 
-Python 3.11+ · scikit-learn · FastAPI · Docker · Azure ML · Blob Storage · ACI · AKS · MLflow · DVC · Evidently · OpenRouter · GitHub Actions · pytest
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| [`ci.yml`](.github/workflows/ci.yml) | Push/PR to `main` | pytest + coverage + Docker build smoke test |
+| [`train.yml`](.github/workflows/train.yml) | Manual / schedule | Training pipeline on Azure ML |
+| [`deploy.yml`](.github/workflows/deploy.yml) | After gate pass | Deploy image to AKS |
+| [`data-ingest.yml`](.github/workflows/data-ingest.yml) | Manual | Data ingestion to Blob |
+| [`drift-check.yml`](.github/workflows/drift-check.yml) | Schedule / manual | Evidently drift check |
+| [`openrouter-report.yml`](.github/workflows/openrouter-report.yml) | Manual | OpenRouter eval summary |
+
+> **Note:** CI badge reflects runs on `main`. Active development may be on the `test` branch until merge.
+
+Details: [docs/stages/stage-07-cicd.md](docs/stages/stage-07-cicd.md) · [docs/pipeline/](docs/pipeline/)
+
+## Architecture overview
+
+- Narrative: [docs/architecture/architecture-overview.md](docs/architecture/architecture-overview.md)
+- Component checklist: [docs/architecture/architecture-diagram-notes.md](docs/architecture/architecture-diagram-notes.md)
+- Mermaid source: [docs/architecture/architecture-diagram.mmd](docs/architecture/architecture-diagram.mmd)
+- Rendered PNGs: [docs/architecture/images/](docs/architecture/images/)
+
+## Demo flow
+
+Live presentation script: [docs/demo-script.md](docs/demo-script.md)
+
+Rehearsal checklist: [docs/demo-day.md](docs/demo-day.md)
+
+Suggested opener: Architecture Explorer at `/demo/flow`, then dashboard predict + drift + OpenRouter cards.
+
+## Team responsibilities
+
+| Member | Primary focus |
+|--------|---------------|
+| A | Data ingestion, DVC, Azure Blob |
+| B | Training, MLflow, quality gate, model registry |
+| C | FastAPI, Docker, pytest, CI, ACI staging |
+| D | AKS, monitoring, Evidently drift, OpenRouter |
+
+Details: [docs/team-roles.md](docs/team-roles.md) · [docs/code-documentation/file-ownership.md](docs/code-documentation/file-ownership.md)
+
+## Submission checklist
+
+Track repo-side vs Azure-pending vs demo items: [docs/submission-checklist.md](docs/submission-checklist.md)
+
+## Screenshots and evidence
+
+Required captures before grading: [docs/evidence/screenshots-needed.md](docs/evidence/screenshots-needed.md)
+
+Store files under `docs/evidence/` using the naming convention in [docs/evidence/README.md](docs/evidence/README.md).
+
+## Security
+
+**No secrets are committed to this repository.** API keys, Azure credentials, and connection strings belong in:
+
+- GitHub Actions Secrets (`AZURE_CREDENTIALS`, `OPENROUTER_API_KEY`, etc.)
+- Local environment variables or `.env` (gitignored)
+
+See [docs/azure-setup.md](docs/azure-setup.md) for the secrets list. Run `py scripts/audit_python_docs.py` and review [docs/code-documentation/audit-report.md](docs/code-documentation/audit-report.md) for documentation coverage.
+
+## Azure setup (Phase 2 — pending)
+
+Provisioning guide: [docs/azure-setup.md](docs/azure-setup.md)
+
+When ready:
+
+```bash
+az login
+source scripts/setup_azure_env.sh
+py scripts/build_image.py --acr acrwoutagemlops --tag v1 --push
+py infra/deploy_aci.py --wait-health
+py infra/deploy_aks.py --wait-health
+```
+
+## Pipeline stages (quick links)
+
+| # | Stage | Doc |
+|---|-------|-----|
+| 1 | Data + DVC | [docs/pipeline/01-data-stage.md](docs/pipeline/01-data-stage.md) |
+| 2 | Training | [docs/pipeline/02-training-stage.md](docs/pipeline/02-training-stage.md) |
+| 3 | Quality gate | [docs/pipeline/03-quality-gate.md](docs/pipeline/03-quality-gate.md) |
+| 4 | Model registry | [docs/pipeline/04-model-registry.md](docs/pipeline/04-model-registry.md) |
+| 5 | Docker | [docs/pipeline/05-docker-build.md](docs/pipeline/05-docker-build.md) |
+| 6 | Deployment | [docs/pipeline/06-deployment.md](docs/pipeline/06-deployment.md) |
+| 7 | Drift monitoring | [docs/pipeline/07-drift-monitoring.md](docs/pipeline/07-drift-monitoring.md) |
+| 8 | OpenRouter | [docs/pipeline/08-openrouter-integration.md](docs/pipeline/08-openrouter-integration.md) |
+
+Implementation detail: [docs/stages/](docs/stages/)

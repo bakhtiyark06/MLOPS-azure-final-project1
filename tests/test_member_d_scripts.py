@@ -1,3 +1,7 @@
+# Author: TODO - Team Member Name
+# Responsibility: TODO - Member D Script Tests
+# Last Reviewed: TODO
+
 """Tests for Member D CLI scripts to meet coverage threshold."""
 
 from __future__ import annotations

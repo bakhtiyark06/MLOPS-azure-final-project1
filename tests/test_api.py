@@ -201,6 +201,11 @@ def test_dashboard_home(api_client):
     assert "Run Full Local Pipeline" in html
     assert "Check Website Metrics" in html
     assert 'class="tab-nav"' in html
+    assert 'class="tab-nav__link' in html
+    assert 'tab-nav__icon' in html
+    assert 'aria-label="Dashboard"' in html
+    assert 'href="#url-check"' in html
+    assert 'href="#predict"' in html
     assert 'id="system-apis"' in html
     assert 'href="#system-apis"' in html
     assert 'data-panel="system-apis"' in html
@@ -241,6 +246,8 @@ def test_dashboard_static_assets(api_client):
     assert css.status_code == 200
     assert js.status_code == 200
     assert "tab-nav" in css.text
+    assert "tab-nav__link" in css.text
+    assert "prefers-reduced-motion" in css.text
 
 
 def test_monitoring_status(api_client):

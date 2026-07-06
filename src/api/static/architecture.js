@@ -138,21 +138,12 @@
         const node = nodeById(nodeId);
         if (!node) return;
 
-        const el = document.createElement("button");
-        el.type = "button";
+        const el = document.createElement("div");
         el.className = `arch-node ${laneClass(node.swimlane)}`;
         if (node.id === "blocked") el.classList.add("lane-fail");
         el.dataset.nodeId = node.id;
         el.setAttribute("aria-label", node.label);
         el.textContent = node.label;
-
-        el.addEventListener("click", () => selectNode(node.id));
-        el.addEventListener("keydown", (ev) => {
-          if (ev.key === "Enter" || ev.key === " ") {
-            ev.preventDefault();
-            selectNode(node.id);
-          }
-        });
 
         nodesWrap.appendChild(el);
       });
@@ -350,18 +341,15 @@
       el.classList.toggle("is-dimmed", el.dataset.section !== sectionId);
     });
 
-    const noteEl = $("#presenter-note");
+    const noteEl = $("#arch-stage-note");
     const note = stage?.presenterNote || section?.presenterNote;
-    if (note) {
-      noteEl.textContent = note;
-      noteEl.hidden = false;
-    } else {
-      noteEl.hidden = true;
-    }
-
-    if (!selectedNodeId && (stage?.nodeIds?.length || section?.nodeIds?.length)) {
-      const first = (stage?.nodeIds || section?.nodeIds)[0];
-      selectNode(first, { skipStageNote: true });
+    if (noteEl) {
+      if (note) {
+        noteEl.textContent = note;
+        noteEl.hidden = false;
+      } else {
+        noteEl.hidden = true;
+      }
     }
 
     requestAnimationFrame(() => {
@@ -374,94 +362,7 @@
     activeStageId = null;
     $$(".stage-tab").forEach((tab) => tab.classList.remove("active"));
     $$(".arch-section").forEach((el) => el.classList.remove("is-dimmed"));
-    $("#presenter-note").hidden = true;
-  }
-
-  function isEmpty(val) {
-    return !val || val === "—" || val === "-";
-  }
-
-  function fillMetaList(container, rows) {
-    container.innerHTML = "";
-    const filtered = rows.filter(([, val]) => !isEmpty(val));
-    if (!filtered.length) {
-      container.parentElement.hidden = true;
-      return;
-    }
-    container.parentElement.hidden = false;
-    filtered.forEach(([label, val]) => {
-      const dt = document.createElement("dt");
-      dt.textContent = label;
-      const dd = document.createElement("dd");
-      dd.textContent = val;
-      container.appendChild(dt);
-      container.appendChild(dd);
-    });
-  }
-
-  function showDetail(node) {
-    const panel = $("#detail-panel");
-    const d = node.detail || {};
-    panel?.classList.add("is-updating");
-
-    $("#detail-title").textContent = node.label;
-
-    const purpose = d.purpose || d.what;
-    const why = d.why;
-    const parts = [purpose, why].filter((p) => !isEmpty(p));
-    let summary = parts.join(" ");
-    if (node.rubric?.length) {
-      summary += ` Rubric: ${node.rubric.join(", ")}.`;
-    }
-    $("#detail-summary").textContent = summary || "No description available.";
-    $("#detail-summary").classList.remove("detail-hint");
-
-    const sectionsEl = $("#detail-sections");
-    sectionsEl.hidden = false;
-
-    fillMetaList($("#detail-overview"), [
-      ["Purpose", purpose],
-      ["Why", why],
-      ["Next", d.next],
-    ]);
-
-    fillMetaList($("#detail-io"), [
-      ["Input", d.input],
-      ["Output", d.output],
-    ]);
-
-    fillMetaList($("#detail-code"), [
-      ["Files", d.files],
-      ["Azure", d.azure],
-      ["Secrets", d.secrets],
-      ["Dependencies", d.dependencies],
-    ]);
-
-    fillMetaList($("#detail-ops"), [
-      ["GitHub Workflow", d.githubWorkflow],
-      ["Docker Resources", d.dockerResources],
-      ["Commands", d.commands],
-      ["Env Vars", d.envVars],
-    ]);
-
-    const payloadBlock = $("#detail-payload-block");
-    const payloadEl = $("#detail-payload");
-    if (!isEmpty(d.examplePayload)) {
-      payloadBlock.hidden = false;
-      payloadEl.textContent = d.examplePayload;
-    } else {
-      payloadBlock.hidden = true;
-    }
-
-    const nextEl = $("#detail-next");
-    if (!isEmpty(d.next)) {
-      nextEl.textContent = `Next: ${d.next}`;
-      nextEl.hidden = false;
-    } else {
-      nextEl.hidden = true;
-    }
-
-    requestAnimationFrame(() => panel?.classList.remove("is-updating"));
+    $("#arch-stage-note").hidden = true;
   }
 
   function setNodeStates(options) {
@@ -479,11 +380,10 @@
     });
   }
 
-  function selectNode(nodeId, options = {}) {
-    const { fromFlow = false, skipStageNote = false, skipTimeline = false } = options;
+  function highlightNode(nodeId, options = {}) {
+    const { fromFlow = false, skipTimeline = false } = options;
     selectedNodeId = nodeId;
-    const node = nodeById(nodeId);
-    if (!node) return;
+    if (!nodeById(nodeId)) return;
 
     if (!fromFlow) {
       setNodeStates({ currentId: nodeId, dimOthers: !!activeStageId });
@@ -496,19 +396,12 @@
       }
     }
 
-    showDetail(node);
-
     if (!skipTimeline && data.timelineFlow) {
       const tIdx = data.timelineFlow.findIndex((s) => s.nodeId === nodeId);
       if (tIdx >= 0) {
         timelineIndex = tIdx;
         updateTimelineUI();
       }
-    }
-
-    if (!skipStageNote && !fromFlow) {
-      const section = sectionForNode(nodeId);
-      if (section) focusStage(section.id);
     }
   }
 
@@ -529,14 +422,6 @@
 
     clearStageFocus();
     updateTimelineUI();
-
-    $("#detail-title").textContent = "Select a component";
-    $("#detail-summary").textContent =
-      "Click a node to see purpose, inputs, outputs, and operations.";
-    $("#detail-summary").classList.add("detail-hint");
-    $("#detail-sections").hidden = true;
-    $("#detail-next").hidden = true;
-    $("#detail-payload-block").hidden = true;
     updateProgress();
   }
 
@@ -578,7 +463,7 @@
       animatePacket(data.liveFlow[index - 1], nodeId);
     }
 
-    selectNode(nodeId, { fromFlow: true, skipTimeline: false, skipStageNote: true });
+    highlightNode(nodeId, { fromFlow: true, skipTimeline: false });
     syncTimelineFromFlowNode(nodeId);
     updateProgress();
 
@@ -614,7 +499,7 @@
       animatePacket(prevNode, nodeId);
     }
 
-    selectNode(nodeId, { skipTimeline: true });
+    highlightNode(nodeId, { skipTimeline: true });
     updateTimelineUI();
     updateProgress();
 

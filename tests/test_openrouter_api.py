@@ -1,3 +1,7 @@
+# Author: TODO - Team Member Name
+# Responsibility: TODO - OpenRouter API Tests
+# Last Reviewed: TODO
+
 """Tests for OpenRouter report API endpoints and fallback generation."""
 
 from __future__ import annotations

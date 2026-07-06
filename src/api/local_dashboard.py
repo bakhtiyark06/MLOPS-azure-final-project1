@@ -73,6 +73,55 @@ def _activity_drift_summary_path(root: Path) -> Path:
     return root / "reports" / "drift" / "drift_summary.json"
 
 
+_SVG_ATTRS = 'xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'
+
+_NAV_ICONS: dict[str, str] = {
+    "dashboard": f'<svg {_SVG_ATTRS}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+    "demo": f'<svg {_SVG_ATTRS}><polygon points="5 3 19 12 5 21 5 3"/></svg>',
+    "architecture": f'<svg {_SVG_ATTRS}><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
+    "system-apis": f'<svg {_SVG_ATTRS}><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+    "drift": f'<svg {_SVG_ATTRS}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+    "openrouter": f'<svg {_SVG_ATTRS}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>',
+    "url-check": f'<svg {_SVG_ATTRS}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+    "predict": f'<svg {_SVG_ATTRS}><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg>',
+    "report": f'<svg {_SVG_ATTRS}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+    "about": f'<svg {_SVG_ATTRS}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+}
+
+
+def _nav_link(
+    label: str,
+    href: str,
+    icon_key: str,
+    *,
+    is_section: bool = False,
+    external: bool = False,
+    active: bool = False,
+) -> str:
+    """Build a single nav tab with icon, label, and active indicator."""
+    classes = ["tab-nav__link"]
+    if external:
+        classes.append("tab-nav__link--external")
+    if active:
+        classes.append("active")
+
+    attrs: list[str] = [f'class="{" ".join(classes)}"', f'aria-label="{label}"']
+    if is_section:
+        attrs.append("data-section")
+    if external:
+        attrs.append('rel="noopener"')
+
+    icon = _NAV_ICONS.get(icon_key, _NAV_ICONS["dashboard"])
+    attr_str = " ".join(attrs)
+    return (
+        f'<a href="{href}" {attr_str}>'
+        f'<span class="tab-nav__icon" aria-hidden="true">{icon}</span>'
+        f'<span class="tab-nav__label">{label}</span>'
+        f'<span class="tab-nav__indicator" aria-hidden="true"></span>'
+        f"</a>"
+    )
+
+
 def _build_nav_tabs(base_url: str, root: Path) -> str:
     """Convert legacy homepage links into modern tab-style navigation."""
     drift_html = _activity_drift_html_path(root)
@@ -80,13 +129,16 @@ def _build_nav_tabs(base_url: str, root: Path) -> str:
     openrouter_fail = root / "reports" / "openrouter" / "openrouter_failure_analysis.md"
     legacy_openrouter = root / "reports" / "openrouter" / "openrouter_eval_summary.md"
 
-    tabs: list[tuple[str, str, bool]] = [
-        ("Dashboard", "#dashboard", True),
-        ("Demo Hub", f"{base_url}/demo", False),
-        ("Architecture", f"{base_url}/demo/flow", False),
-        ("System APIs", "#system-apis", True),
-        ("Drift Summary", "#drift-summary", True),
-        ("OpenRouter Summary", "#openrouter-summary", True),
+    # (label, href, icon_key, is_section, external)
+    tabs: list[tuple[str, str, str, bool, bool]] = [
+        ("Dashboard", "#dashboard", "dashboard", True, False),
+        ("Demo Hub", f"{base_url}/demo", "demo", False, True),
+        ("Architecture", f"{base_url}/demo/flow", "architecture", False, True),
+        ("System APIs", "#system-apis", "system-apis", True, False),
+        ("Drift Summary", "#drift-summary", "drift", True, False),
+        ("OpenRouter Summary", "#openrouter-summary", "openrouter", True, False),
+        ("Website URL Check", "#url-check", "url-check", True, False),
+        ("Prediction", "#predict", "predict", True, False),
     ]
     if _file_status(drift_html)["available"]:
         href = (
@@ -94,13 +146,15 @@ def _build_nav_tabs(base_url: str, root: Path) -> str:
             if "artifacts" in str(drift_html)
             else f"{base_url}/reports/drift/drift_report.html"
         )
-        tabs.append(("Drift Report", href, False))
+        tabs.append(("Drift Report", href, "report", False, True))
     if _file_status(openrouter_eval)["available"]:
         tabs.append(
             (
                 "OpenRouter Report",
                 f"{base_url}/artifacts/reports/openrouter_eval_summary.md",
+                "report",
                 False,
+                True,
             )
         )
     elif _file_status(legacy_openrouter)["available"]:
@@ -108,7 +162,9 @@ def _build_nav_tabs(base_url: str, root: Path) -> str:
             (
                 "OpenRouter Report",
                 f"{base_url}/reports/openrouter/openrouter_eval_summary.md",
+                "report",
                 False,
+                True,
             )
         )
     if _file_status(openrouter_fail)["available"]:
@@ -116,19 +172,26 @@ def _build_nav_tabs(base_url: str, root: Path) -> str:
             (
                 "OpenRouter Failure",
                 f"{base_url}/reports/openrouter/openrouter_failure_analysis.md",
+                "report",
                 False,
+                True,
             )
         )
 
-    tabs.append(("About", "#about", True))
+    tabs.append(("About", "#about", "about", True, False))
 
     parts: list[str] = []
-    for label, href, is_section in tabs:
-        if is_section:
-            css = "tab active" if href == "#dashboard" else "tab"
-            parts.append(f'<a href="{href}" class="{css}" data-section>{label}</a>')
-        else:
-            parts.append(f'<a href="{href}" class="tab">{label}</a>')
+    for label, href, icon_key, is_section, external in tabs:
+        parts.append(
+            _nav_link(
+                label,
+                href,
+                icon_key,
+                is_section=is_section,
+                external=external,
+                active=href == "#dashboard",
+            )
+        )
     return "\n    ".join(parts)
 
 
