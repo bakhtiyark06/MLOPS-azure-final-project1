@@ -1,0 +1,22 @@
+{
+  "captured_at_utc": "2026-07-06T22:50:00Z",
+  "aks_load_balancer": "http://20.84.194.181",
+  "aci_staging": "http://outage-predictor-staging.centralus.azurecontainer.io:8000",
+  "health": {
+    "aks": {"status": "ok", "model_loaded": true, "feature_count": 7},
+    "aci": {"status": "ok", "model_loaded": true, "feature_count": 7}
+  },
+  "predict_sample": {
+    "request": {
+      "response_time_ms": 850,
+      "status_code": 500,
+      "error_rate": 0.12,
+      "latency_p95_ms": 1200,
+      "request_count": 4200,
+      "cpu_usage_percent": 78,
+      "memory_usage_percent": 81
+    },
+    "aks_response": {"outage_predicted": true, "outage_probability": 0.57},
+    "aci_response": {"outage_predicted": true, "outage_probability": 0.57}
+  }
+}

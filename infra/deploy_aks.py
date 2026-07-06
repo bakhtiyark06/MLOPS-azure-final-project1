@@ -17,6 +17,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 K8S_DIR = Path(__file__).resolve().parent / "k8s"
 
+AZ_CLI = "az.cmd" if sys.platform == "win32" else "az"
+KUBECTL = "kubectl.exe" if sys.platform == "win32" else "kubectl"
+
 
 def _env(name: str, default: str | None = None, required: bool = False) -> str:
     value = os.getenv(name, default)
@@ -38,7 +41,7 @@ def get_aks_credentials(
     resource_group: str, cluster_name: str, subscription_id: str | None = None
 ) -> None:
     cmd = [
-        "az",
+        AZ_CLI,
         "aks",
         "get-credentials",
         "--resource-group",
@@ -72,10 +75,10 @@ def create_acr_pull_secret(namespace: str, acr_name: str) -> None:
         return
 
     server = f"{acr_name}.azurecr.io"
-    run(["kubectl", "delete", "secret", "acr-secret", "-n", namespace], check=False)
+    run([KUBECTL, "delete", "secret", "acr-secret", "-n", namespace], check=False)
     run(
         [
-            "kubectl",
+            KUBECTL,
             "create",
             "secret",
             "docker-registry",
@@ -107,11 +110,11 @@ def apply_manifests(
             out = tmp_path / name
             out.write_text(rendered, encoding="utf-8")
 
-        run(["kubectl", "create", "namespace", namespace], check=False)
+        run([KUBECTL, "create", "namespace", namespace], check=False)
         if acr_name:
             create_acr_pull_secret(namespace, acr_name)
         for name in ("deployment.yaml", "service.yaml"):
-            run(["kubectl", "apply", "-n", namespace, "-f", str(tmp_path / name)])
+            run([KUBECTL, "apply", "-n", namespace, "-f", str(tmp_path / name)])
 
 
 def wait_for_rollout(namespace: str, deployment: str = "outage-predictor", timeout_sec: int = 300) -> bool:
@@ -119,7 +122,7 @@ def wait_for_rollout(namespace: str, deployment: str = "outage-predictor", timeo
     while time.time() < deadline:
         result = run(
             [
-                "kubectl",
+                KUBECTL,
                 "rollout",
                 "status",
                 f"deployment/{deployment}",
@@ -142,7 +145,7 @@ def get_service_external_ip(namespace: str, service: str = "outage-predictor", t
     while time.time() < deadline:
         result = run(
             [
-                "kubectl",
+                KUBECTL,
                 "get",
                 "svc",
                 service,

@@ -1,0 +1,7 @@
+{
+  "captured_at_utc": "2026-07-06T22:52:00Z",
+  "action_group": "outage-predictor-alerts",
+  "metric_alert": "outage-predictor-high-failed-requests",
+  "resource_group": "rg-website-outage-mlops",
+  "portal_path": "Azure Portal → Monitor → Alerts → outage-predictor-high-failed-requests"
+}

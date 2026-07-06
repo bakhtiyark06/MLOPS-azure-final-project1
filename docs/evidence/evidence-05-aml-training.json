@@ -1,0 +1,9 @@
+{
+  "captured_at_utc": "2026-07-06T22:50:00Z",
+  "workspace": "mlw-website-outage",
+  "experiment": "website-outage-prediction",
+  "mlflow_tracking_uri_set": true,
+  "run_name": "outage-rf-train",
+  "note": "Training logged to Azure ML MLflow; experiment created in workspace. Capture Portal screenshot under Experiments → website-outage-prediction.",
+  "portal_path": "Azure ML → Experiments → website-outage-prediction"
+}

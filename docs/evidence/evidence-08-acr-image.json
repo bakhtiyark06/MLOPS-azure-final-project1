@@ -1,0 +1,7 @@
+{
+  "captured_at_utc": "2026-07-06T22:50:00Z",
+  "registry": "acrwoutagemlops.azurecr.io",
+  "repository": "outage-predictor",
+  "tags": ["v1", "v1.0.0"],
+  "portal_path": "ACR acrwoutagemlops → Repositories → outage-predictor"
+}
