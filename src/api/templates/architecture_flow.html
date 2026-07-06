@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Full System Architecture — Website Outage MLOps</title>
+  <link rel="stylesheet" href="/static/architecture.css" />
+</head>
+<body class="arch-page">
+  <div class="arch-bg" aria-hidden="true">
+    <div class="arch-bg-grid"></div>
+    <canvas class="arch-bg-particles" id="arch-particles"></canvas>
+    <div class="arch-bg-vignette"></div>
+  </div>
+
+  <header class="arch-header">
+    <div class="arch-header-inner">
+      <h1 id="arch-title">Full System Architecture</h1>
+      <p class="arch-subtitle" id="arch-subtitle">Loading…</p>
+
+      <nav class="stage-tabs" id="stage-tabs" aria-label="Infrastructure sections"></nav>
+
+      <nav class="arch-timeline" id="arch-timeline" aria-label="Pipeline timeline"></nav>
+
+      <div class="arch-controls" role="toolbar" aria-label="Tour controls">
+        <button type="button" class="btn-arch btn-primary" id="btn-live-flow">Live Flow</button>
+        <button type="button" class="btn-arch btn-ghost" id="btn-pause" disabled>Pause</button>
+        <button type="button" class="btn-arch btn-ghost" id="btn-reset">Reset</button>
+        <button type="button" class="btn-arch btn-ghost" id="btn-prev" aria-label="Previous step">◀</button>
+        <button type="button" class="btn-arch btn-ghost" id="btn-next" aria-label="Next step">▶</button>
+        <span class="arch-progress" id="flow-progress" aria-live="polite"></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="arch-main">
+    <div class="arch-canvas-wrap">
+      <div class="arch-canvas" id="arch-canvas">
+        <svg class="arch-edges" id="arch-edges" aria-hidden="true"></svg>
+        <div class="arch-sections" id="arch-sections"></div>
+      </div>
+
+      <aside class="arch-detail" id="detail-panel" aria-live="polite">
+        <h2 id="detail-title">Select a component</h2>
+        <p id="detail-summary" class="detail-hint">Click a node to see purpose, inputs, outputs, and operations.</p>
+        <div class="detail-sections" id="detail-sections" hidden>
+          <section class="detail-block">
+            <h3>Overview</h3>
+            <dl class="detail-meta" id="detail-overview"></dl>
+          </section>
+          <section class="detail-block">
+            <h3>Inputs &amp; Outputs</h3>
+            <dl class="detail-meta" id="detail-io"></dl>
+          </section>
+          <section class="detail-block">
+            <h3>Code &amp; Azure</h3>
+            <dl class="detail-meta" id="detail-code"></dl>
+          </section>
+          <section class="detail-block">
+            <h3>Operations</h3>
+            <dl class="detail-meta" id="detail-ops"></dl>
+          </section>
+          <section class="detail-block" id="detail-payload-block" hidden>
+            <h3>Example Payload</h3>
+            <pre class="detail-payload" id="detail-payload"></pre>
+          </section>
+        </div>
+        <p id="detail-next" class="detail-next" hidden></p>
+        <p id="presenter-note" class="presenter-note" hidden></p>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="arch-footer">
+    <a href="/demo">Demo Hub</a> · <a href="/">Dashboard</a> · <a href="/docs">Swagger</a>
+  </footer>
+
+  <script src="/static/architecture.js"></script>
+</body>
+</html>

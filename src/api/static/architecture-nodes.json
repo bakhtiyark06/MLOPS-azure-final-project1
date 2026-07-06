@@ -1,0 +1,1610 @@
+{
+  "title": "Full System Architecture",
+  "subtitle": "User URL \u2192 health check \u2192 prediction \u2192 quality gate \u2192 Azure deploy \u2192 monitoring \u2192 AI explanation",
+  "swimlanes": [
+    {
+      "id": "user",
+      "label": "User Experience",
+      "color": "blue",
+      "navLabel": "User Flow"
+    },
+    {
+      "id": "ml",
+      "label": "Machine Learning Pipeline",
+      "color": "orange",
+      "navLabel": "ML Pipeline"
+    },
+    {
+      "id": "deploy",
+      "label": "Container & Deployment",
+      "color": "green",
+      "navLabel": "Deployment"
+    },
+    {
+      "id": "monitor",
+      "label": "Monitoring & Observability",
+      "color": "purple",
+      "navLabel": "Monitoring"
+    },
+    {
+      "id": "ai",
+      "label": "AI Reporting",
+      "color": "yellow",
+      "navLabel": "AI Reporting"
+    }
+  ],
+  "timeline": [
+    {
+      "id": "user",
+      "label": "User"
+    },
+    {
+      "id": "url_input",
+      "label": "URL Check"
+    },
+    {
+      "id": "feature_generator",
+      "label": "Features"
+    },
+    {
+      "id": "fastapi",
+      "label": "Prediction"
+    },
+    {
+      "id": "training",
+      "label": "Training"
+    },
+    {
+      "id": "quality_gate",
+      "label": "Gate"
+    },
+    {
+      "id": "registry",
+      "label": "Registry"
+    },
+    {
+      "id": "docker",
+      "label": "Docker"
+    },
+    {
+      "id": "acr",
+      "label": "ACR"
+    },
+    {
+      "id": "aci",
+      "label": "ACI"
+    },
+    {
+      "id": "aks",
+      "label": "AKS"
+    },
+    {
+      "id": "app_insights",
+      "label": "Monitor"
+    },
+    {
+      "id": "evidently",
+      "label": "Drift"
+    },
+    {
+      "id": "openrouter",
+      "label": "OpenRouter"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "user",
+      "swimlane": "user",
+      "label": "User",
+      "short": "Starts the health check",
+      "detail": {
+        "what": "A reviewer or operator starts the outage prediction demo.",
+        "why": "Shows the system from a real user perspective.",
+        "input": "Intent to check a website",
+        "output": "Website URL submitted",
+        "files": "src/api/templates/dashboard.html",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "Website URL Input",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "url_input",
+      "swimlane": "user",
+      "label": "Website URL Input",
+      "short": "Address submitted by user",
+      "detail": {
+        "what": "Captures a public http/https URL from the dashboard.",
+        "why": "Connects user intent to measurable signals.",
+        "input": "URL string",
+        "output": "Validated public URL",
+        "files": "src/api/templates/dashboard.html, src/api/url_checker.py",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "Website Health Analyzer",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "health_analyzer",
+      "swimlane": "user",
+      "label": "Website Health Analyzer",
+      "short": "Performs live HTTP check",
+      "detail": {
+        "what": "Probes the URL with repeated HTTP GET requests.",
+        "why": "Turns a website into measurable monitoring metrics.",
+        "input": "Public URL",
+        "output": "HTTP timing and status data",
+        "files": "src/api/url_checker.py, POST /check-url-metrics",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "Public Website Signals",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "public_signals",
+      "swimlane": "user",
+      "label": "Public Website Signals",
+      "short": "Status, latency, SSL, DNS",
+      "detail": {
+        "what": "Collects status code, response time, error rate, and latency.",
+        "why": "These signals mirror real monitoring data.",
+        "input": "HTTP probe results",
+        "output": "Raw signal metrics",
+        "files": "src/api/url_checker.py",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "Feature Generator",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "feature_generator",
+      "swimlane": "user",
+      "label": "Feature Generator",
+      "short": "Converts signals to model inputs",
+      "detail": {
+        "what": "Maps probe metrics into the seven model feature fields.",
+        "why": "The ML model only understands numeric features, not URLs.",
+        "input": "Public signals",
+        "output": "Feature vector for /predict",
+        "files": "src/api/inference.py, src/features/build_features.py",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "Prepared Model Features",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "prepared_features",
+      "swimlane": "user",
+      "label": "Prepared Model Features",
+      "short": "Final payload for prediction",
+      "detail": {
+        "what": "JSON payload with response_time_ms, status_code, error_rate, etc.",
+        "why": "Standardized input for the trained classifier.",
+        "input": "Generated features",
+        "output": "POST /predict body",
+        "files": "src/api/schemas.py",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "FastAPI Service",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "dataset",
+      "swimlane": "ml",
+      "label": "Dataset",
+      "short": "Website metrics for training",
+      "rubric": [
+        "Training data"
+      ],
+      "detail": {
+        "what": "Versioned website monitoring CSV used to train the model.",
+        "why": "Consistent data is required for reproducible ML.",
+        "input": "Raw monitoring CSV",
+        "output": "Ingestion-ready dataset",
+        "files": "data/raw/website_monitoring.csv, scripts/generate_sample_data.py",
+        "azure": "Azure Blob Storage (stwoutagemlops)",
+        "secrets": "AZURE_STORAGE_CONNECTION_STRING",
+        "next": "Data Ingestion",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "blob_storage",
+      "swimlane": "ml",
+      "label": "Azure Blob Storage",
+      "short": "Versioned dataset store",
+      "rubric": [
+        "Azure Blob Storage"
+      ],
+      "detail": {
+        "what": "Stores raw datasets and DVC remote artifacts.",
+        "why": "Central data store for the team pipeline.",
+        "input": "Ingested CSV",
+        "output": "Blob URL + dataset hash",
+        "files": "scripts/ingest_data.py, configs/data_config.yaml",
+        "azure": "Storage Account stwoutagemlops",
+        "secrets": "AZURE_STORAGE_CONNECTION_STRING",
+        "next": "Data Ingestion",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "ingestion",
+      "swimlane": "ml",
+      "label": "Data Ingestion",
+      "short": "Loads and versions data",
+      "detail": {
+        "what": "Validates, hashes, and versions data with DVC.",
+        "why": "Lineage links data versions to model versions.",
+        "input": "Raw CSV",
+        "output": "dataset_hash.txt, ingestion_metadata.json",
+        "files": "scripts/ingest_data.py, src/data/load_data.py",
+        "azure": "Azure Blob Storage",
+        "secrets": "AZURE_STORAGE_CONNECTION_STRING",
+        "next": "Schema Validation",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "validation",
+      "swimlane": "ml",
+      "label": "Schema Validation",
+      "short": "Confirms schema and columns",
+      "detail": {
+        "what": "Checks required columns before training uses data.",
+        "why": "Prevents silent schema drift in training.",
+        "input": "Raw DataFrame",
+        "output": "Validated data or error",
+        "files": "src/data/validate_data.py",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "Feature Engineering",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "feature_eng",
+      "swimlane": "ml",
+      "label": "Feature Engineering",
+      "short": "Prepares model inputs",
+      "detail": {
+        "what": "Cleans data and performs train/test split.",
+        "why": "Consistent features for train and inference.",
+        "input": "Validated dataset",
+        "output": "X_train, X_test, y_train, y_test",
+        "files": "src/data/preprocess.py, src/features/build_features.py",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "Model Training",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "training",
+      "swimlane": "ml",
+      "label": "Model Training",
+      "short": "Trains Random Forest model",
+      "rubric": [
+        "Azure ML Compute"
+      ],
+      "detail": {
+        "what": "Fits RandomForestClassifier on monitoring features.",
+        "why": "Learns patterns that precede outages.",
+        "input": "Training features + labels",
+        "output": "outage_model.joblib",
+        "files": "scripts/train_model.py, src/models/train.py",
+        "azure": "Azure ML Compute (optional)",
+        "secrets": "\u2014",
+        "next": "MLflow Tracking",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "mlflow",
+      "swimlane": "ml",
+      "label": "MLflow Tracking",
+      "short": "Logs params, metrics, artifacts",
+      "rubric": [
+        "MLflow tracking"
+      ],
+      "detail": {
+        "what": "Records hyperparameters, metrics, and model artifacts.",
+        "why": "Experiment traceability for audits and demos.",
+        "input": "Training run metadata",
+        "output": "MLflow run + artifacts",
+        "files": "scripts/train_model.py, mlruns/",
+        "azure": "Azure ML workspace (optional tracking URI)",
+        "secrets": "AZURE_SUBSCRIPTION_ID (optional)",
+        "next": "Model Evaluation",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "evaluation",
+      "swimlane": "ml",
+      "label": "Model Evaluation",
+      "short": "Calculates accuracy and F1",
+      "detail": {
+        "what": "Evaluates holdout set and writes eval_metrics.json.",
+        "why": "Objective metrics before deployment decisions.",
+        "input": "Model + test set",
+        "output": "eval_metrics.json",
+        "files": "scripts/evaluate_model.py, src/models/evaluate.py",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "Quality Gate",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "quality_gate",
+      "swimlane": "ml",
+      "label": "Quality Gate",
+      "short": "Blocks bad models",
+      "rubric": [
+        "Quality gate"
+      ],
+      "detail": {
+        "what": "Checks accuracy and F1 against thresholds.",
+        "why": "Prevents weak models from shipping to production.",
+        "input": "eval_metrics.json",
+        "output": "gate_passed true/false",
+        "files": "scripts/evaluate_model.py, configs/model_config.yaml",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "PASS \u2192 Registry or FAIL \u2192 Blocked Deployment",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "registry",
+      "swimlane": "ml",
+      "label": "Azure ML Registry",
+      "short": "Stores approved models",
+      "rubric": [
+        "Azure ML Model Registry",
+        "GitHub Secrets"
+      ],
+      "detail": {
+        "what": "Registers passing models with dataset_hash tags.",
+        "why": "Central approved model catalog in Azure.",
+        "input": "gate_passed + model artifact",
+        "output": "Registered model version",
+        "files": "scripts/register_model.py, src/models/registry.py",
+        "azure": "Azure ML Model Registry",
+        "secrets": "AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, AZURE_WORKSPACE_NAME",
+        "next": "Docker Image",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "blocked",
+      "swimlane": "ml",
+      "label": "Blocked Deployment",
+      "short": "Stops weak models",
+      "detail": {
+        "what": "Pipeline halts when quality gate fails.",
+        "why": "Protects users from bad predictions in production.",
+        "input": "gate_passed: false",
+        "output": "Exit code 1, no registry",
+        "files": "scripts/evaluate_model.py --force-fail",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "Failure Summary",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "github_repo",
+      "swimlane": "deploy",
+      "label": "GitHub Repo & Branch",
+      "short": "Source control workflow",
+      "rubric": [
+        "GitHub repo and branch workflow"
+      ],
+      "detail": {
+        "what": "Team collaborates via branches and pull requests.",
+        "why": "Traceable changes for CI/CD triggers.",
+        "input": "Code changes",
+        "output": "Merged pipeline code",
+        "files": ".github/workflows/",
+        "azure": "\u2014",
+        "secrets": "GITHUB_TOKEN",
+        "next": "GitHub Actions",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "fastapi",
+      "swimlane": "deploy",
+      "label": "FastAPI Service",
+      "short": "Serves /health, /predict, URL check",
+      "rubric": [
+        "FastAPI /predict endpoint"
+      ],
+      "detail": {
+        "what": "REST API for health, prediction, and dashboard routes.",
+        "why": "Production inference surface for the model.",
+        "input": "JSON metrics",
+        "output": "outage_probability, outage_predicted",
+        "files": "src/api/main.py, src/api/inference.py",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "Docker Image",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "docker",
+      "swimlane": "deploy",
+      "label": "Docker Image",
+      "short": "Packages API and model",
+      "rubric": [
+        "Docker containerization"
+      ],
+      "detail": {
+        "what": "Container image with API, model, and dependencies.",
+        "why": "Portable deployable unit for Azure.",
+        "input": "Application code + model",
+        "output": "Container image",
+        "files": "Dockerfile, scripts/build_image.py",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "GitHub Actions",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "github_actions",
+      "swimlane": "deploy",
+      "label": "GitHub Actions",
+      "short": "Automates tests and deploy",
+      "rubric": [
+        "GitHub Actions trigger flow"
+      ],
+      "detail": {
+        "what": "CI/CD workflows for test, train, deploy pipelines.",
+        "why": "Automated quality checks before Azure deploy.",
+        "input": "Push/PR to branch",
+        "output": "Build + deploy jobs",
+        "files": ".github/workflows/ci.yml, train.yml, deploy.yml",
+        "azure": "\u2014",
+        "secrets": "GitHub Secrets (AZURE_*, OPENROUTER_API_KEY)",
+        "next": "Azure Container Registry",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "acr",
+      "swimlane": "deploy",
+      "label": "Azure Container Registry",
+      "short": "Stores versioned images",
+      "rubric": [
+        "Azure Container Registry"
+      ],
+      "detail": {
+        "what": "Private registry for Docker images (acrwoutagemlops).",
+        "why": "Secure image storage for staging and production.",
+        "input": "Built Docker image",
+        "output": "Tagged image in ACR",
+        "files": "scripts/build_image.py",
+        "azure": "ACR acrwoutagemlops",
+        "secrets": "AZURE_CREDENTIALS",
+        "next": "ACI Staging",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "aci",
+      "swimlane": "deploy",
+      "label": "ACI Staging",
+      "short": "Staging deployment",
+      "rubric": [
+        "Azure Container Instances staging"
+      ],
+      "detail": {
+        "what": "Runs container on Azure Container Instances for staging.",
+        "why": "Validate deploy before production AKS.",
+        "input": "ACR image",
+        "output": "Staging endpoint",
+        "files": "infra/deploy_aci.py",
+        "azure": "Azure Container Instances",
+        "secrets": "AZURE_SUBSCRIPTION_ID",
+        "next": "AKS Production",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "aks",
+      "swimlane": "deploy",
+      "label": "AKS Production",
+      "short": "Production Kubernetes",
+      "rubric": [
+        "Azure Kubernetes Service production"
+      ],
+      "detail": {
+        "what": "Production deployment on aks-outage-predictor.",
+        "why": "Scalable production inference.",
+        "input": "ACR image + K8s manifests",
+        "output": "Production pods",
+        "files": "infra/deploy_aks.py, infra/k8s/",
+        "azure": "AKS aks-outage-predictor",
+        "secrets": "AZURE_CREDENTIALS",
+        "next": "Public Prediction Endpoint",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "endpoint",
+      "swimlane": "deploy",
+      "label": "Public Prediction Endpoint",
+      "short": "Live API for users",
+      "detail": {
+        "what": "Load-balanced /predict endpoint in production.",
+        "why": "Serves real-time outage risk scores.",
+        "input": "Monitoring metrics JSON",
+        "output": "Prediction response",
+        "files": "infra/k8s/service.yaml",
+        "azure": "AKS Load Balancer",
+        "secrets": "\u2014",
+        "next": "Application Insights",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "app_insights",
+      "swimlane": "monitor",
+      "label": "Application Insights",
+      "short": "Captures requests and latency",
+      "rubric": [
+        "Application Insights"
+      ],
+      "detail": {
+        "what": "Telemetry from FastAPI requests and errors.",
+        "why": "Operational visibility in production.",
+        "input": "HTTP traffic",
+        "output": "Traces, metrics, logs",
+        "files": "src/monitoring/telemetry.py",
+        "azure": "outage-predictor-insights",
+        "secrets": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+        "next": "Azure Monitor",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "azure_monitor",
+      "swimlane": "monitor",
+      "label": "Azure Monitor",
+      "short": "Tracks service health",
+      "rubric": [
+        "Azure Monitor"
+      ],
+      "detail": {
+        "what": "Platform monitoring and alert rules.",
+        "why": "Detects outages and SLA breaches.",
+        "input": "App Insights metrics",
+        "output": "Health dashboards + alerts",
+        "files": "infra/setup_alerts.py",
+        "azure": "Azure Monitor",
+        "secrets": "\u2014",
+        "next": "Evidently Drift Detection",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "evidently",
+      "swimlane": "monitor",
+      "label": "Evidently Drift Detection",
+      "short": "Compares current vs reference",
+      "rubric": [
+        "Evidently drift detection"
+      ],
+      "detail": {
+        "what": "Compares production data to reference baseline.",
+        "why": "Detects when model inputs drift over time.",
+        "input": "reference.csv + current.csv",
+        "output": "drift_report.html, drift_summary.json",
+        "files": "scripts/run_drift_check.py, src/monitoring/drift.py",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "Drift Report",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "drift_report",
+      "swimlane": "monitor",
+      "label": "Drift Report",
+      "short": "HTML/JSON drift evidence",
+      "detail": {
+        "what": "Visual report of feature distribution changes.",
+        "why": "Evidence for retraining decisions.",
+        "input": "Evidently analysis",
+        "output": "reports/drift/drift_report.html",
+        "files": "scripts/run_drift_check.py",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "Alert Rule",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "alert_rule",
+      "swimlane": "monitor",
+      "label": "Alert Rule",
+      "short": "Fires on threshold breach",
+      "detail": {
+        "what": "Azure Monitor alert when drift or errors spike.",
+        "why": "Notifies team before users are impacted.",
+        "input": "Metric thresholds",
+        "output": "Fired alert",
+        "files": "infra/setup_alerts.py",
+        "azure": "Azure Monitor Alerts",
+        "secrets": "\u2014",
+        "next": "Teams Notification",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "teams",
+      "swimlane": "monitor",
+      "label": "Teams Notification",
+      "short": "Operational alert to team",
+      "detail": {
+        "what": "Sends alert to Microsoft Teams channel.",
+        "why": "Human escalation for incidents.",
+        "input": "Fired alert",
+        "output": "Team notification",
+        "files": "infra/setup_alerts.py",
+        "azure": "Action Groups",
+        "secrets": "\u2014",
+        "next": "OpenRouter API",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "openrouter",
+      "swimlane": "ai",
+      "label": "OpenRouter API",
+      "short": "Secure LLM integration",
+      "rubric": [
+        "OpenRouter",
+        "GitHub Secrets"
+      ],
+      "detail": {
+        "what": "Calls LLM via OpenRouter for plain-English summaries.",
+        "why": "Helps non-technical reviewers understand results.",
+        "input": "Metrics + drift JSON",
+        "output": "Markdown summary",
+        "files": "scripts/openrouter_report.py",
+        "azure": "\u2014",
+        "secrets": "OPENROUTER_API_KEY",
+        "next": "AI Model Evaluation Report",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "ai_report",
+      "swimlane": "ai",
+      "label": "AI Evaluation Report",
+      "short": "Summarizes metrics and drift",
+      "detail": {
+        "what": "LLM-generated summary of model health and risks.",
+        "why": "Stakeholder-friendly narrative for demos.",
+        "input": "eval_metrics + drift_summary",
+        "output": "openrouter_eval_summary.md",
+        "files": "scripts/openrouter_report.py",
+        "azure": "\u2014",
+        "secrets": "OPENROUTER_API_KEY",
+        "next": "Demo Explanation",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "failure_summary",
+      "swimlane": "ai",
+      "label": "Failure Summary",
+      "short": "Explains pipeline failures",
+      "detail": {
+        "what": "LLM explains quality gate or deploy failures.",
+        "why": "Speeds up debugging for the team.",
+        "input": "Failed gate metrics",
+        "output": "openrouter_failure_analysis.md",
+        "files": "scripts/openrouter_report.py",
+        "azure": "\u2014",
+        "secrets": "OPENROUTER_API_KEY",
+        "next": "Teams Notification",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "demo_explanation",
+      "swimlane": "ai",
+      "label": "Demo Explanation",
+      "short": "Helps reviewers understand",
+      "detail": {
+        "what": "Dashboard and architecture pages explain the full story.",
+        "why": "Demo-ready for non-technical audiences.",
+        "input": "All pipeline artifacts",
+        "output": "Presenter narrative",
+        "files": "docs/demo-day.md, /demo/flow",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "\u2014",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "browser",
+      "section": "user_section",
+      "swimlane": "user",
+      "label": "Browser",
+      "short": "User client",
+      "detail": {
+        "what": "Web browser used to access the MLOps demo.",
+        "why": "Entry point for all user interactions.",
+        "input": "User actions",
+        "output": "HTTP requests to dashboard/API",
+        "files": "\u2014",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "Dashboard",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "dashboard",
+      "section": "user_section",
+      "swimlane": "user",
+      "label": "Dashboard",
+      "short": "MLOps control center",
+      "detail": {
+        "what": "Local hub for pipeline, URL check, predict, and drift.",
+        "why": "Single demo control surface.",
+        "input": "User clicks and form data",
+        "output": "API calls and visual status",
+        "files": "src/api/templates/dashboard.html, src/api/local_dashboard.py",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "FastAPI Service",
+        "commands": "py scripts/run_local.py",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "swagger",
+      "section": "user_section",
+      "swimlane": "user",
+      "label": "Swagger UI",
+      "short": "API documentation",
+      "detail": {
+        "what": "Interactive OpenAPI docs at /docs.",
+        "why": "Lets reviewers explore endpoints.",
+        "input": "OpenAPI schema",
+        "output": "Try-it-out API console",
+        "files": "src/api/swagger_ui.py",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "POST /predict",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "ssl_dns",
+      "section": "monitoring_section",
+      "swimlane": "user",
+      "label": "SSL & DNS",
+      "short": "Connection health",
+      "detail": {
+        "what": "TLS and DNS resolution during URL probes.",
+        "why": "Explains reachability beyond HTTP status.",
+        "input": "Target hostname",
+        "output": "Resolved IP, TLS handshake",
+        "files": "src/api/url_checker.py",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "Public Website Signals",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "commands": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "predict_endpoint",
+      "section": "serving_section",
+      "swimlane": "deploy",
+      "label": "Predict Endpoint",
+      "short": "POST /predict",
+      "detail": {
+        "what": "Outage risk inference from monitoring metrics.",
+        "why": "Core ML serving endpoint.",
+        "input": "7 feature metrics JSON",
+        "output": "outage_probability, outage_predicted",
+        "files": "src/api/main.py",
+        "azure": "AKS Load Balancer",
+        "secrets": "\u2014",
+        "next": "Dashboard",
+        "githubWorkflow": ".github/workflows/deploy.yml",
+        "commands": "curl -X POST /predict",
+        "examplePayload": "{\"response_time_ms\":850,\"status_code\":500}",
+        "dockerResources": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014"
+      }
+    },
+    {
+      "id": "health_endpoint",
+      "section": "serving_section",
+      "swimlane": "deploy",
+      "label": "Health Endpoint",
+      "short": "GET /health",
+      "detail": {
+        "what": "Readiness check for model and API.",
+        "why": "K8s liveness and demo status cards.",
+        "input": "\u2014",
+        "output": "status ok, model_loaded",
+        "files": "src/api/main.py",
+        "azure": "AKS probes",
+        "secrets": "\u2014",
+        "next": "Application Insights",
+        "commands": "curl /health",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014",
+        "examplePayload": "\u2014"
+      }
+    },
+    {
+      "id": "url_endpoint",
+      "section": "serving_section",
+      "swimlane": "deploy",
+      "label": "URL Check Endpoint",
+      "short": "POST /check-url-metrics",
+      "detail": {
+        "what": "Probes public URLs and returns metrics.",
+        "why": "Bridges real websites to model features.",
+        "input": "url string",
+        "output": "Metrics and optional prediction",
+        "files": "src/api/url_checker.py",
+        "azure": "\u2014",
+        "secrets": "\u2014",
+        "next": "Feature Generator",
+        "commands": "curl -X POST /check-url-metrics",
+        "examplePayload": "{\"url\":\"https://example.com\"}",
+        "githubWorkflow": "\u2014",
+        "dockerResources": "\u2014",
+        "envVars": "\u2014",
+        "dependencies": "\u2014"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "user",
+      "to": "url_input",
+      "type": "data"
+    },
+    {
+      "from": "url_input",
+      "to": "health_analyzer",
+      "type": "data"
+    },
+    {
+      "from": "health_analyzer",
+      "to": "public_signals",
+      "type": "data"
+    },
+    {
+      "from": "public_signals",
+      "to": "feature_generator",
+      "type": "data"
+    },
+    {
+      "from": "feature_generator",
+      "to": "prepared_features",
+      "type": "data"
+    },
+    {
+      "from": "prepared_features",
+      "to": "fastapi",
+      "type": "data"
+    },
+    {
+      "from": "dataset",
+      "to": "blob_storage",
+      "type": "data"
+    },
+    {
+      "from": "blob_storage",
+      "to": "ingestion",
+      "type": "auth"
+    },
+    {
+      "from": "ingestion",
+      "to": "validation",
+      "type": "data"
+    },
+    {
+      "from": "validation",
+      "to": "feature_eng",
+      "type": "data"
+    },
+    {
+      "from": "feature_eng",
+      "to": "training",
+      "type": "data"
+    },
+    {
+      "from": "training",
+      "to": "mlflow",
+      "type": "data"
+    },
+    {
+      "from": "mlflow",
+      "to": "evaluation",
+      "type": "data"
+    },
+    {
+      "from": "evaluation",
+      "to": "quality_gate",
+      "type": "data"
+    },
+    {
+      "from": "quality_gate",
+      "to": "registry",
+      "type": "deploy"
+    },
+    {
+      "from": "quality_gate",
+      "to": "blocked",
+      "type": "fail"
+    },
+    {
+      "from": "registry",
+      "to": "docker",
+      "type": "deploy"
+    },
+    {
+      "from": "blocked",
+      "to": "failure_summary",
+      "type": "fail"
+    },
+    {
+      "from": "failure_summary",
+      "to": "openrouter",
+      "type": "fail"
+    },
+    {
+      "from": "fastapi",
+      "to": "docker",
+      "type": "data"
+    },
+    {
+      "from": "github_repo",
+      "to": "github_actions",
+      "type": "data"
+    },
+    {
+      "from": "docker",
+      "to": "github_actions",
+      "type": "data"
+    },
+    {
+      "from": "github_actions",
+      "to": "acr",
+      "type": "data"
+    },
+    {
+      "from": "acr",
+      "to": "aci",
+      "type": "deploy"
+    },
+    {
+      "from": "aci",
+      "to": "aks",
+      "type": "deploy"
+    },
+    {
+      "from": "aks",
+      "to": "endpoint",
+      "type": "deploy"
+    },
+    {
+      "from": "endpoint",
+      "to": "app_insights",
+      "type": "monitor"
+    },
+    {
+      "from": "app_insights",
+      "to": "azure_monitor",
+      "type": "monitor"
+    },
+    {
+      "from": "azure_monitor",
+      "to": "evidently",
+      "type": "monitor"
+    },
+    {
+      "from": "evidently",
+      "to": "drift_report",
+      "type": "monitor"
+    },
+    {
+      "from": "drift_report",
+      "to": "alert_rule",
+      "type": "monitor"
+    },
+    {
+      "from": "alert_rule",
+      "to": "teams",
+      "type": "monitor"
+    },
+    {
+      "from": "openrouter",
+      "to": "ai_report",
+      "type": "auth"
+    },
+    {
+      "from": "ai_report",
+      "to": "demo_explanation",
+      "type": "data"
+    },
+    {
+      "from": "teams",
+      "to": "openrouter",
+      "type": "data"
+    },
+    {
+      "from": "browser",
+      "to": "dashboard",
+      "type": "data"
+    },
+    {
+      "from": "dashboard",
+      "to": "swagger",
+      "type": "data"
+    },
+    {
+      "from": "health_analyzer",
+      "to": "ssl_dns",
+      "type": "data"
+    },
+    {
+      "from": "ssl_dns",
+      "to": "public_signals",
+      "type": "data"
+    },
+    {
+      "from": "fastapi",
+      "to": "predict_endpoint",
+      "type": "data"
+    },
+    {
+      "from": "fastapi",
+      "to": "health_endpoint",
+      "type": "data"
+    },
+    {
+      "from": "fastapi",
+      "to": "url_endpoint",
+      "type": "data"
+    },
+    {
+      "from": "predict_endpoint",
+      "to": "dashboard",
+      "type": "data"
+    }
+  ],
+  "liveFlow": [
+    "user",
+    "url_input",
+    "health_analyzer",
+    "public_signals",
+    "feature_generator",
+    "prepared_features",
+    "fastapi",
+    "ingestion",
+    "training",
+    "mlflow",
+    "evaluation",
+    "quality_gate",
+    "registry",
+    "docker",
+    "github_actions",
+    "acr",
+    "aci",
+    "aks",
+    "app_insights",
+    "azure_monitor",
+    "evidently",
+    "alert_rule",
+    "openrouter"
+  ],
+  "presentationStages": [
+    {
+      "id": "user_section",
+      "title": "USER",
+      "swimlane": "user_section",
+      "nodeIds": [
+        "user",
+        "browser",
+        "dashboard",
+        "swagger"
+      ],
+      "presenterNote": "Users interact via browser, dashboard, and Swagger to drive the demo."
+    },
+    {
+      "id": "monitoring_section",
+      "title": "WEBSITE MONITORING",
+      "swimlane": "monitoring_section",
+      "nodeIds": [
+        "url_input",
+        "health_analyzer",
+        "public_signals",
+        "ssl_dns",
+        "feature_generator"
+      ],
+      "presenterNote": "Public URL probes produce monitoring signals converted to model features."
+    },
+    {
+      "id": "ml_section",
+      "title": "ML PIPELINE",
+      "swimlane": "ml_section",
+      "nodeIds": [
+        "dataset",
+        "blob_storage",
+        "ingestion",
+        "validation",
+        "feature_eng",
+        "training",
+        "mlflow",
+        "evaluation",
+        "quality_gate",
+        "registry",
+        "blocked"
+      ],
+      "presenterNote": "Data is versioned, trained, evaluated, and gated before registry."
+    },
+    {
+      "id": "cicd_section",
+      "title": "CI/CD",
+      "swimlane": "cicd_section",
+      "nodeIds": [
+        "github_repo",
+        "github_actions",
+        "docker",
+        "acr",
+        "aci",
+        "aks"
+      ],
+      "presenterNote": "GitHub Actions builds Docker images and deploys through ACR to AKS."
+    },
+    {
+      "id": "serving_section",
+      "title": "SERVING",
+      "swimlane": "serving_section",
+      "nodeIds": [
+        "fastapi",
+        "predict_endpoint",
+        "health_endpoint",
+        "url_endpoint",
+        "endpoint"
+      ],
+      "presenterNote": "FastAPI serves health, predict, and URL-check endpoints in production."
+    },
+    {
+      "id": "observability_section",
+      "title": "MONITORING",
+      "swimlane": "observability_section",
+      "nodeIds": [
+        "app_insights",
+        "azure_monitor",
+        "evidently",
+        "drift_report",
+        "alert_rule",
+        "teams"
+      ],
+      "presenterNote": "Telemetry, drift detection, alerts, and Teams notifications."
+    },
+    {
+      "id": "ai_section",
+      "title": "AI REPORTING",
+      "swimlane": "ai_section",
+      "nodeIds": [
+        "openrouter",
+        "ai_report",
+        "failure_summary",
+        "demo_explanation"
+      ],
+      "presenterNote": "OpenRouter generates human-readable evaluation and failure summaries."
+    },
+    {
+      "id": "prepared_section",
+      "title": "DATA FLOW",
+      "swimlane": "prepared_section",
+      "nodeIds": [
+        "prepared_features"
+      ],
+      "presenterNote": "Prepared features bridge monitoring signals to the prediction API."
+    }
+  ],
+  "sections": [
+    {
+      "id": "user_section",
+      "label": "USER",
+      "icon": "user",
+      "nodeIds": [
+        "user",
+        "browser",
+        "dashboard",
+        "swagger"
+      ],
+      "presenterNote": "Users interact via browser, dashboard, and Swagger to drive the demo."
+    },
+    {
+      "id": "monitoring_section",
+      "label": "WEBSITE MONITORING",
+      "icon": "monitor",
+      "nodeIds": [
+        "url_input",
+        "health_analyzer",
+        "public_signals",
+        "ssl_dns",
+        "feature_generator"
+      ],
+      "presenterNote": "Public URL probes produce monitoring signals converted to model features."
+    },
+    {
+      "id": "ml_section",
+      "label": "ML PIPELINE",
+      "icon": "ml",
+      "nodeIds": [
+        "dataset",
+        "blob_storage",
+        "ingestion",
+        "validation",
+        "feature_eng",
+        "training",
+        "mlflow",
+        "evaluation",
+        "quality_gate",
+        "registry",
+        "blocked"
+      ],
+      "presenterNote": "Data is versioned, trained, evaluated, and gated before registry."
+    },
+    {
+      "id": "cicd_section",
+      "label": "CI/CD",
+      "icon": "cicd",
+      "nodeIds": [
+        "github_repo",
+        "github_actions",
+        "docker",
+        "acr",
+        "aci",
+        "aks"
+      ],
+      "presenterNote": "GitHub Actions builds Docker images and deploys through ACR to AKS."
+    },
+    {
+      "id": "serving_section",
+      "label": "SERVING",
+      "icon": "serving",
+      "nodeIds": [
+        "fastapi",
+        "predict_endpoint",
+        "health_endpoint",
+        "url_endpoint",
+        "endpoint"
+      ],
+      "presenterNote": "FastAPI serves health, predict, and URL-check endpoints in production."
+    },
+    {
+      "id": "observability_section",
+      "label": "MONITORING",
+      "icon": "obs",
+      "nodeIds": [
+        "app_insights",
+        "azure_monitor",
+        "evidently",
+        "drift_report",
+        "alert_rule",
+        "teams"
+      ],
+      "presenterNote": "Telemetry, drift detection, alerts, and Teams notifications."
+    },
+    {
+      "id": "ai_section",
+      "label": "AI REPORTING",
+      "icon": "ai",
+      "nodeIds": [
+        "openrouter",
+        "ai_report",
+        "failure_summary",
+        "demo_explanation"
+      ],
+      "presenterNote": "OpenRouter generates human-readable evaluation and failure summaries."
+    },
+    {
+      "id": "prepared_section",
+      "label": "DATA FLOW",
+      "icon": "flow",
+      "nodeIds": [
+        "prepared_features"
+      ],
+      "presenterNote": "Prepared features bridge monitoring signals to the prediction API."
+    }
+  ],
+  "timelineFlow": [
+    {
+      "step": 1,
+      "label": "User",
+      "nodeId": "user"
+    },
+    {
+      "step": 2,
+      "label": "Website URL",
+      "nodeId": "url_input"
+    },
+    {
+      "step": 3,
+      "label": "Feature Generation",
+      "nodeId": "feature_generator"
+    },
+    {
+      "step": 4,
+      "label": "Data Validation",
+      "nodeId": "validation"
+    },
+    {
+      "step": 5,
+      "label": "Model Prediction",
+      "nodeId": "fastapi"
+    },
+    {
+      "step": 6,
+      "label": "Quality Gate",
+      "nodeId": "quality_gate"
+    },
+    {
+      "step": 7,
+      "label": "Registry",
+      "nodeId": "registry"
+    },
+    {
+      "step": 8,
+      "label": "Docker",
+      "nodeId": "docker"
+    },
+    {
+      "step": 9,
+      "label": "ACR",
+      "nodeId": "acr"
+    },
+    {
+      "step": 10,
+      "label": "AKS",
+      "nodeId": "aks"
+    },
+    {
+      "step": 11,
+      "label": "FastAPI",
+      "nodeId": "predict_endpoint"
+    },
+    {
+      "step": 12,
+      "label": "Dashboard",
+      "nodeId": "dashboard"
+    },
+    {
+      "step": 13,
+      "label": "Drift Detection",
+      "nodeId": "evidently"
+    },
+    {
+      "step": 14,
+      "label": "OpenRouter",
+      "nodeId": "openrouter"
+    }
+  ]
+}

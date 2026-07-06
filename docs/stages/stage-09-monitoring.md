@@ -11,7 +11,8 @@
 | File | Purpose |
 |------|---------|
 | `src/monitoring/telemetry.py` | Bootstrap Azure Monitor OpenTelemetry |
-| `src/monitoring/drift.py` | Evidently drift report logic |
+| `src/monitoring/drift.py` | Evidently drift report logic (scipy KS fallback) |
+| `src/api/drift_service.py` | Auto-generate drift reports on API request |
 | `scripts/run_drift_check.py` | CLI drift check (exit 1 on drift) |
 | `infra/setup_alerts.py` | Provision Action Group + metric alert |
 | `.github/workflows/drift-check.yml` | Scheduled daily drift job |
@@ -52,6 +53,32 @@ curl -X POST http://<aks-ip>/predict -H "Content-Type: application/json" `
 
 ## Run drift check
 
+Drift reports are generated automatically when you call the API or open the dashboard drift card. You can also run the CLI manually.
+
+### API (auto-generate)
+
+```powershell
+curl http://127.0.0.1:8000/drift
+curl -X POST http://127.0.0.1:8000/drift/run
+```
+
+- `GET /drift` — returns `drift_summary.json`, generating the report if missing
+- `POST /drift/run` — force a new drift analysis
+- `GET /monitoring/drift-summary` — same summary (backward compatible)
+
+If reference or current CSVs are missing, the service generates sample monitoring data first (same as the local pipeline).
+
+### Activity-triggered drift (demo)
+
+Each `POST /predict` and `POST /check-url-metrics` appends a row to `artifacts/reports/current_observations.csv` (demo production log). When at least 5 observations exist, drift compares `data/reference/reference.csv` against that rolling snapshot and writes:
+
+- `artifacts/reports/drift_summary.json`
+- `artifacts/reports/drift_report.html`
+
+Until 5 observations exist, `GET /drift` returns `insufficient_data: true`. Predictions never fail if drift update fails.
+
+### CLI (scheduled / CI — unchanged)
+
 ```powershell
 py scripts/generate_sample_data.py
 py scripts/run_drift_check.py
@@ -59,9 +86,11 @@ py scripts/run_drift_check.py
 
 Outputs:
 
-- `reports/drift/drift_report.html` — Evidently visual report
+- `reports/drift/drift_report.html` — Evidently visual report (or scipy fallback HTML)
 - `reports/drift/drift_report.json` — machine-readable metrics
-- `reports/drift/drift_summary.json` — compact summary for OpenRouter
+- `reports/drift/drift_summary.json` — compact summary for OpenRouter and dashboard
+
+Summary JSON includes: `generated_at`, `drift_score`, `drifted_columns`, `reference_rows`, `current_rows`, `recommendation`, and `method` (`evidently` or `scipy_ks`).
 
 Exit code `1` means drift detected (used for CI alerts).
 
@@ -87,9 +116,10 @@ The `Drift Check` workflow runs daily. When drift is detected:
 
 ## Demo — drift + alert
 
-1. Run `py scripts/run_drift_check.py` and open `reports/drift/drift_report.html`
-2. Show failed GitHub Actions run or Azure alert in Portal
-3. Proceed to [stage-10-openrouter.md](stage-10-openrouter.md) for LLM summary
+1. Open the dashboard **Drift Summary** section or call `GET /drift` — reports generate automatically
+2. Open `reports/drift/drift_report.html` (or click **View HTML Report** on the dashboard)
+3. Show failed GitHub Actions run or Azure alert in Portal
+4. Proceed to [stage-10-openrouter.md](stage-10-openrouter.md) for LLM summary
 
 ## Cross-reference
 

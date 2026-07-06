@@ -52,3 +52,4 @@ configs/azure_config.yaml
 
 # Generated reports (drift, OpenRouter)
 /reports/
+/artifacts/reports/

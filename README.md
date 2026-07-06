@@ -75,6 +75,10 @@ python3.11 scripts/run_local.py
 
 Open **http://127.0.0.1:8000/** for the dashboard, or **http://127.0.0.1:8000/docs** for Swagger.
 
+Drift reports auto-generate via `GET /drift` or the dashboard **Drift Summary** card. After each **Predict** or **URL check**, observations append to `artifacts/reports/current_observations.csv`; once 5+ exist, drift refreshes automatically. In production, drift is usually run on a schedule or batch window—not every request.
+
+**OpenRouter summary** reads model metrics (`eval_metrics.json`), quality gate result, drift summary, and dataset hash. Set `OPENROUTER_API_KEY` locally or as the GitHub Secret `OPENROUTER_API_KEY`. Without a key, the API writes a **local fallback** report to `artifacts/reports/openrouter_eval_summary.md`. Generate from the dashboard **OpenRouter Summary** card or `POST /reports/openrouter/run`; fetch with `GET /reports/openrouter`.
+
 Verify the server is running:
 
 ```bash

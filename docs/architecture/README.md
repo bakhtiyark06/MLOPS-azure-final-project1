@@ -12,6 +12,15 @@ Output: `docs/architecture/images/*.png`
 
 Requires [mermaid-cli](https://github.com/mermaid-js/mermaid-cli) (`npm install -g @mermaid-js/mermaid-cli`) or `npx`.
 
+## Interactive architecture (live demo)
+
+When the API is running (`py scripts/run_local.py`):
+
+- **Demo hub:** http://127.0.0.1:8000/demo
+- **Interactive diagram:** http://127.0.0.1:8000/demo/flow — five swimlanes, stage tabs, Live Flow tour
+
+See [stage-architecture-viz.md](../stages/stage-architecture-viz.md) for presenter steps. Mermaid/PNG exports below remain the static slide reference.
+
 ## 1. End-to-end pipeline (all members)
 
 ![End-to-end MLOps pipeline](images/01-end-to-end-pipeline.png)

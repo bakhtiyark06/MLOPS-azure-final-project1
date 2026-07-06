@@ -124,12 +124,11 @@ def probe_url_metrics(url: str) -> UrlMetricsResponse:
     ) as client:
         for _ in range(PROBE_COUNT):
             try:
-                with client.stream("GET", url) as response:
-                    status_codes.append(response.status_code)
-                    elapsed_ms = response.elapsed.total_seconds() * 1000
-                    durations_ms.append(elapsed_ms)
-                    for _ in response.iter_bytes():
-                        pass
+                response = client.get(url)
+                status_codes.append(response.status_code)
+                # elapsed is only valid after the response body has been read (get() does this)
+                elapsed_ms = response.elapsed.total_seconds() * 1000
+                durations_ms.append(elapsed_ms)
             except httpx.HTTPError:
                 errors += 1
                 status_codes.append(0)

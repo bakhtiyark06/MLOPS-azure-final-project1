@@ -31,7 +31,7 @@
         </div>
         <div class="status-card">
           <div class="label">OpenRouter</div>
-          <div class="value">{{OPENROUTER_LABEL}}</div>
+          <div class="value" id="hero-openrouter-label">{{OPENROUTER_LABEL}}</div>
         </div>
       </div>
     </div>
@@ -42,6 +42,7 @@
   </nav>
 
   <main>
+    <div id="dashboard" class="tab-panel active" data-panel="dashboard">
     <section id="system-status">
       <h2>System Status</h2>
       <div class="card">
@@ -63,6 +64,55 @@
           <div class="timeline-step" data-step="eval">4. Quality gate</div>
           <div class="timeline-step" data-step="predict">5. Predict risk</div>
         </div>
+      </div>
+    </section>
+
+    <section id="drift-summary">
+      <h2>Drift Summary</h2>
+      <div class="card">
+        <div class="status-grid" id="drift-summary-grid">
+          <div class="status-item"><span class="label">Overall Status</span><span class="value" id="drift-overall">—</span></div>
+          <div class="status-item"><span class="label">Drift Score</span><span class="value" id="drift-score">—</span></div>
+          <div class="status-item"><span class="label">Recommendation</span><span class="value drift-recommendation" id="drift-recommendation">—</span></div>
+          <div class="status-item"><span class="label">Generated Time</span><span class="value" id="drift-generated">—</span></div>
+          <div class="status-item"><span class="label">Reference Rows</span><span class="value" id="drift-ref-rows">—</span></div>
+          <div class="status-item"><span class="label">Current Rows</span><span class="value" id="drift-cur-rows">—</span></div>
+        </div>
+        <div class="drift-columns-block">
+          <span class="label">Drifted Columns</span>
+          <ul class="drift-columns-list" id="drift-columns-list"><li>—</li></ul>
+        </div>
+        <div class="drift-insufficient" id="drift-insufficient" hidden>
+          <p id="drift-insufficient-text"></p>
+        </div>
+        <div class="btn-row">
+          <a class="btn-secondary" id="btn-view-drift-html" href="/artifacts/reports/drift_report.html" target="_blank" rel="noopener">Open HTML Drift Report</a>
+          <button type="button" class="btn-primary" id="btn-refresh-drift">Refresh Drift Summary</button>
+        </div>
+        <div class="loading" id="drift-loading">Loading drift analysis…</div>
+        <div class="error-msg" id="drift-error"></div>
+        <p class="prose" id="drift-summary-text"></p>
+      </div>
+    </section>
+
+    <section id="openrouter-summary">
+      <h2>OpenRouter Summary</h2>
+      <div class="card">
+        <div class="status-grid" id="openrouter-summary-grid">
+          <div class="status-item"><span class="label">Generated</span><span class="value" id="or-generated">—</span></div>
+          <div class="status-item"><span class="label">Generated Time</span><span class="value" id="or-generated-at">—</span></div>
+          <div class="status-item"><span class="label">Source</span><span class="value" id="or-source">—</span></div>
+        </div>
+        <div class="openrouter-preview-block">
+          <span class="label">Preview</span>
+          <pre class="openrouter-preview" id="or-preview">—</pre>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-primary" id="btn-generate-openrouter">Generate OpenRouter Summary</button>
+          <a class="btn-secondary" id="btn-view-openrouter" href="/artifacts/reports/openrouter_eval_summary.md" target="_blank" rel="noopener" hidden>View OpenRouter Report</a>
+        </div>
+        <div class="loading" id="openrouter-loading">Loading OpenRouter report…</div>
+        <div class="error-msg" id="openrouter-error"></div>
       </div>
     </section>
 
@@ -94,6 +144,11 @@
         <div class="loading" id="url-loading">Probing website (5 requests)…</div>
         <div class="error-msg" id="url-error"></div>
         <p class="prose" id="url-note"></p>
+        <div class="url-history" id="url-history-section" hidden>
+          <h3 class="url-history-title">Recent checks</h3>
+          <ul class="url-history-list" id="url-history-list"></ul>
+          <button type="button" class="btn-ghost" id="btn-clear-url-history">Clear history</button>
+        </div>
       </div>
     </section>
 
@@ -171,10 +226,40 @@
         </div>
       </div>
     </section>
+    </div>
 
-    <section id="how-model-works">
-      <h2>How the Model Works</h2>
-      <div class="card">
+    <section id="system-apis" class="tab-panel" data-panel="system-apis">
+      <h2>System APIs</h2>
+      <p class="prose">Quick access to API documentation, health checks, and monitoring JSON endpoints.</p>
+      <div class="api-tools-grid">
+        <div class="card api-tool-card">
+          <h3>Swagger UI</h3>
+          <p>Interactive API reference for <code>/predict</code>, <code>/health</code>, and more.</p>
+          <a class="btn-secondary" href="/docs" target="_blank" rel="noopener">Open Swagger UI</a>
+        </div>
+        <div class="card api-tool-card">
+          <h3>Health Check</h3>
+          <p>Service readiness and model load status.</p>
+          <a class="btn-secondary" href="/health" target="_blank" rel="noopener">Open Health Check</a>
+        </div>
+        <div class="card api-tool-card">
+          <h3>Eval Metrics</h3>
+          <p>Quality gate results, accuracy, and F1 score JSON.</p>
+          <a class="btn-secondary" href="/monitoring/eval-metrics" target="_blank" rel="noopener">Open Eval Metrics</a>
+        </div>
+        <div class="card api-tool-card">
+          <h3>Combined Status</h3>
+          <p>Full monitoring snapshot: gate, eval metrics, drift, and report links.</p>
+          <a class="btn-secondary" href="/monitoring/status" target="_blank" rel="noopener">Open Combined Status</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="about" class="tab-panel" data-panel="about">
+      <h2>About</h2>
+
+      <div class="card about-block" id="about-model">
+        <h3>How the Model Works</h3>
         <div class="flow-steps">
           <span class="flow-step">1. URL or metrics entered</span>
           <span class="flow-arrow">→</span>
@@ -190,11 +275,9 @@
         </div>
         <p class="prose">The dashboard sends metrics to <code>POST /predict</code>. The trained Random Forest returns <code>outage_predicted</code> and <code>outage_probability</code>, then explanation cards highlight risky inputs.</p>
       </div>
-    </section>
 
-    <section id="guide">
-      <h2>How to Predict Any Website</h2>
-      <div class="card prose">
+      <div class="card about-block prose" id="about-guide">
+        <h3>How to Predict Any Website</h3>
         <ol>
           <li>Type a public website URL and click <strong>Check Website Metrics</strong>.</li>
           <li>The app measures status code, response time, latency, and simple error rate from 5 probes.</li>
@@ -204,12 +287,10 @@
           <li>Read outage probability and the risk explanation cards.</li>
         </ol>
       </div>
-    </section>
 
-    <section id="public-url">
-      <h2>What Public URL Checking Can and Cannot Do</h2>
-      <div class="grid-2">
+      <div class="grid-2 about-block" id="about-public-url">
         <div class="card prose">
+          <h3>What Public URL Checking Can and Cannot Do</h3>
           <strong>Can measure:</strong>
           <ul>
             <li>HTTP status code</li>
@@ -231,11 +312,9 @@
           </ul>
         </div>
       </div>
-    </section>
 
-    <section id="real-world">
-      <h2>Real-World Workflow</h2>
-      <div class="card prose">
+      <div class="card about-block prose" id="about-real-world">
+        <h3>Real-World Workflow</h3>
         <ol>
           <li>Azure Monitor or Application Insights collects live website metrics.</li>
           <li>Metrics are sent to the prediction API.</li>
@@ -244,20 +323,34 @@
           <li>Engineers investigate before the website goes down.</li>
         </ol>
       </div>
-    </section>
 
-    <section id="demo-script">
-      <h2>Demo Script: What to Say</h2>
-      <div class="card prose">
-        <p><em>“Our model does not predict from the website name alone. It predicts from monitoring metrics. In a real company, these metrics come from Azure Monitor, Application Insights, logs, and health checks. For this demo, we manually enter healthy and unhealthy website metrics to show how the model predicts outage risk.”</em></p>
-        <p><strong>Drift status:</strong> {{DRIFT_SUMMARY}}</p>
-      </div>
-    </section>
+      <div class="card about-block faq-block" id="about-faq">
+        <h3>Frequently Asked Questions</h3>
+        <dl class="faq-list">
+          <dt>What is Website Outage Prediction?</dt>
+          <dd>A machine learning service that estimates the risk of a website outage from monitoring metrics such as response time, error rate, CPU, and memory.</dd>
 
-    <section id="reports">
-      <h2>Reports &amp; Monitoring</h2>
-      <div class="card prose">
-        <p>Use the tab navigation for Swagger docs, health check, eval metrics, drift summary, combined status, drift HTML report, OpenRouter summary, and architecture diagram.</p>
+          <dt>How was this application built?</dt>
+          <dd>Our team built a full MLOps pipeline on Azure: Python for data and training, FastAPI for the API, a Random Forest model, Docker and GitHub Actions for deployment, and monitoring with Evidently and OpenRouter.</dd>
+
+          <dt>What does this dashboard do?</dt>
+          <dd>It is a single control center to run the local pipeline, check public website URLs, predict outage risk, and view system health — without running each script manually.</dd>
+
+          <dt>How does URL checking work?</dt>
+          <dd>The app sends five public HTTP probes to your URL, measures status and latency, auto-fills the prediction form, and saves successful checks in a server-side history list.</dd>
+
+          <dt>What is the end-to-end MLOps flow?</dt>
+          <dd>Data is versioned and ingested, the model is trained and evaluated behind a quality gate, registered in Azure ML, deployed via Docker to ACR/ACI/AKS, then monitored for drift and explained with AI reports.</dd>
+
+          <dt>Which API endpoints should I know?</dt>
+          <dd><code>GET /health</code> checks readiness, <code>POST /predict</code> returns outage risk, <code>POST /check-url-metrics</code> probes a URL, and <code>/docs</code> is the interactive API reference.</dd>
+
+          <dt>Can the model predict from a URL alone?</dt>
+          <dd>No. It needs numeric metrics. URL check supplies public signals only; you still send those values to <code>/predict</code>.</dd>
+
+          <dt>Where do CPU and memory values come from?</dt>
+          <dd>Public URL checks cannot read real server CPU or memory. The dashboard uses demo defaults (50%) unless you enter values from Azure Monitor or your own infrastructure.</dd>
+        </dl>
       </div>
     </section>
   </main>

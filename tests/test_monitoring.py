@@ -11,8 +11,12 @@ import pytest
 from scripts.generate_sample_data import generate_monitoring_data
 from src.monitoring.drift import (
     DriftResult,
+    build_drift_summary_payload,
+    ensure_drift_inputs,
     get_default_drift_paths,
     load_drift_datasets,
+    recommendation_from_drift,
+    run_statistical_drift_check,
     write_drift_summary,
 )
 from src.monitoring.telemetry import get_app_insights_connection_string, setup_telemetry
@@ -56,13 +60,87 @@ def test_write_drift_summary(tmp_path):
         report_path=tmp_path / "drift_report.html",
         json_path=tmp_path / "drift_report.json",
         dataset_drift=True,
-        column_drifts={"error_rate": True},
+        column_drifts={"error_rate": True, "cpu_usage_percent": False},
         summary="Drift in error_rate",
+        reference_rows=100,
+        current_rows=80,
+        drift_score=0.5,
+        method="evidently",
     )
     out = write_drift_summary(result, tmp_path / "summary.json")
     payload = json.loads(out.read_text())
     assert payload["drift_detected"] is True
     assert payload["column_drifts"]["error_rate"] is True
+    assert payload["generated_at"]
+    assert payload["drift_score"] == 0.5
+    assert payload["drifted_columns"] == ["error_rate"]
+    assert payload["reference_rows"] == 100
+    assert payload["recommendation"]
+
+
+def test_recommendation_from_drift():
+    assert "monitoring" in recommendation_from_drift(0.0, False).lower()
+    assert "Investigate" in recommendation_from_drift(0.3, True)
+    assert "Retraining" in recommendation_from_drift(0.8, True)
+
+
+def test_build_drift_summary_payload():
+    result = DriftResult(
+        drift_detected=False,
+        report_path=Path("reports/drift/drift_report.html"),
+        json_path=Path("reports/drift/drift_report.json"),
+        dataset_drift=False,
+        column_drifts={"error_rate": False},
+        summary="No drift",
+        reference_rows=50,
+        current_rows=40,
+        drift_score=0.0,
+        method="scipy_ks",
+    )
+    payload = build_drift_summary_payload(result)
+    assert payload["method"] == "scipy_ks"
+    assert payload["drifted_columns"] == []
+
+
+def test_run_statistical_drift_check(drift_csvs, tmp_path):
+    ref_path, cur_path = drift_csvs
+    result = run_statistical_drift_check(ref_path, cur_path, tmp_path / "reports")
+    assert result.report_path.exists()
+    assert result.json_path.exists()
+    assert result.method == "scipy_ks"
+    assert result.reference_rows == 100
+    assert result.current_rows == 80
+    assert isinstance(result.drift_score, float)
+
+
+def test_ensure_drift_inputs_generates_missing(tmp_path, monkeypatch):
+    ref = tmp_path / "data" / "reference" / "reference.csv"
+    cur = tmp_path / "data" / "processed" / "current.csv"
+    out = tmp_path / "reports" / "drift"
+
+    def fake_paths():
+        return ref, cur, out
+
+    monkeypatch.setattr("src.monitoring.drift.get_default_drift_paths", fake_paths)
+    monkeypatch.setattr("src.monitoring.drift.get_project_root", lambda: tmp_path)
+
+    ref_path, cur_path = ensure_drift_inputs()
+    assert ref_path.exists()
+    assert cur_path.exists()
+
+
+def test_statistical_fallback_when_evidently_fails(drift_csvs, tmp_path, monkeypatch):
+    ref_path, cur_path = drift_csvs
+
+    def fail_evidently(*_args, **_kwargs):
+        raise RuntimeError("Evidently unavailable")
+
+    monkeypatch.setattr("src.monitoring.drift._run_evidently_drift_check", fail_evidently)
+    from src.monitoring.drift import run_drift_check
+
+    result = run_drift_check(ref_path, cur_path, tmp_path / "reports")
+    assert result.method == "scipy_ks"
+    assert result.report_path.exists()
 
 
 def test_setup_telemetry_skips_without_connection_string(monkeypatch):

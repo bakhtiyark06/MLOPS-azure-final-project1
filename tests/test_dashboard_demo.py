@@ -43,6 +43,36 @@ def api_client(trained_model_path: Path) -> TestClient:
         yield client
 
 
+@pytest.fixture()
+def isolated_history(tmp_path: Path):
+    from src.api import url_check_history
+
+    history_file = tmp_path / "url_check_history.json"
+    url_check_history.set_history_path(history_file)
+    yield history_file
+    url_check_history.set_history_path(None)
+
+
+@pytest.fixture()
+def api_client_with_history(trained_model_path: Path, isolated_history: Path) -> TestClient:
+    from src.api.config import ApiSettings
+    from src.api.main import create_app
+
+    app = create_app(settings=ApiSettings(model_path=trained_model_path))
+    with TestClient(app) as client:
+        yield client
+
+
+@pytest.fixture()
+def isolated_url_history(tmp_path: Path):
+    from src.api import url_check_history
+
+    history_file = tmp_path / "url_check_history.json"
+    url_check_history.set_history_path(history_file)
+    yield history_file
+    url_check_history.set_history_path(None)
+
+
 def test_system_status_endpoint(api_client):
     response = api_client.get("/system-status")
     assert response.status_code == 200
@@ -126,6 +156,31 @@ def test_validate_public_url_accepts_https():
     assert url == "https://example.com"
 
 
+def test_probe_url_metrics_accesses_elapsed_after_read():
+    """probe_url_metrics must not access httpx elapsed before response is consumed."""
+    from datetime import timedelta
+    from unittest.mock import MagicMock
+
+    from src.api.url_checker import probe_url_metrics
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.elapsed = timedelta(milliseconds=100)
+
+    mock_client = MagicMock()
+    mock_client.get.return_value = mock_response
+    mock_client.__enter__.return_value = mock_client
+    mock_client.__exit__.return_value = None
+
+    with patch("src.api.url_checker.httpx.Client", return_value=mock_client):
+        result = probe_url_metrics("https://example.com")
+
+    assert mock_client.get.call_count == 5
+    assert result.status_code == 200
+    assert result.response_time_ms == 100.0
+    assert result.cpu_usage_percent == 50.0
+
+
 def test_dashboard_contains_workflow_controls(api_client):
     response = api_client.get("/")
     assert response.status_code == 200
@@ -138,3 +193,124 @@ def test_dashboard_contains_workflow_controls(api_client):
     assert 'class="tab-nav"' in html
     assert "/docs" in html
     assert "/health" in html
+
+
+def test_url_check_history_appends_on_success(api_client_with_history):
+    from src.api.schemas import UrlMetricsResponse
+
+    mock_metrics = UrlMetricsResponse(
+        response_time_ms=120.5,
+        status_code=200,
+        error_rate=0.0,
+        latency_p95_ms=150.0,
+        request_count=5,
+        cpu_usage_percent=50,
+        memory_usage_percent=50,
+        note="demo note",
+    )
+    with (
+        patch("src.api.local_dashboard.validate_public_url", return_value="https://example.com"),
+        patch("src.api.local_dashboard.probe_url_metrics", return_value=mock_metrics),
+    ):
+        response = api_client_with_history.post(
+            "/check-url-metrics", json={"url": "https://example.com"}
+        )
+    assert response.status_code == 200
+
+    history = api_client_with_history.get("/url-check-history").json()
+    assert len(history["items"]) == 1
+    assert history["items"][0]["url"] == "https://example.com"
+    assert history["items"][0]["status_code"] == 200
+
+
+def test_url_check_history_not_appended_on_validation_error(api_client_with_history):
+    response = api_client_with_history.post("/check-url-metrics", json={"url": "http://localhost/"})
+    assert response.status_code == 400
+    history = api_client_with_history.get("/url-check-history").json()
+    assert history["items"] == []
+
+
+def test_clear_url_check_history(api_client_with_history):
+    from src.api.schemas import UrlMetricsResponse
+
+    mock_metrics = UrlMetricsResponse(
+        response_time_ms=100.0,
+        status_code=200,
+        error_rate=0.0,
+        latency_p95_ms=120.0,
+        request_count=5,
+        cpu_usage_percent=50,
+        memory_usage_percent=50,
+        note="ok",
+    )
+    with (
+        patch("src.api.local_dashboard.validate_public_url", return_value="https://example.org"),
+        patch("src.api.local_dashboard.probe_url_metrics", return_value=mock_metrics),
+    ):
+        api_client_with_history.post("/check-url-metrics", json={"url": "https://example.org"})
+
+    clear_resp = api_client_with_history.delete("/url-check-history")
+    assert clear_resp.status_code == 200
+    assert clear_resp.json()["items"] == []
+    assert api_client_with_history.get("/url-check-history").json()["items"] == []
+
+
+def test_url_check_history_appends_on_success(api_client, isolated_url_history):
+    from src.api.schemas import UrlMetricsResponse
+
+    mock_metrics = UrlMetricsResponse(
+        response_time_ms=120.5,
+        status_code=200,
+        error_rate=0.0,
+        latency_p95_ms=150.0,
+        request_count=5,
+        cpu_usage_percent=50,
+        memory_usage_percent=50,
+        note="demo note",
+    )
+    with (
+        patch("src.api.local_dashboard.validate_public_url", return_value="https://example.com"),
+        patch("src.api.local_dashboard.probe_url_metrics", return_value=mock_metrics),
+    ):
+        response = api_client.post("/check-url-metrics", json={"url": "https://example.com"})
+    assert response.status_code == 200
+
+    history = api_client.get("/url-check-history").json()
+    assert len(history["items"]) == 1
+    assert history["items"][0]["url"] == "https://example.com"
+    assert history["items"][0]["status_code"] == 200
+    assert isolated_url_history.exists()
+
+
+def test_url_check_history_not_appended_on_validation_error(api_client, isolated_url_history):
+    response = api_client.post("/check-url-metrics", json={"url": "http://localhost/"})
+    assert response.status_code == 400
+    history = api_client.get("/url-check-history").json()
+    assert history["items"] == []
+
+
+def test_clear_url_check_history(api_client, isolated_url_history):
+    from src.api.schemas import UrlMetricsResponse
+
+    mock_metrics = UrlMetricsResponse(
+        response_time_ms=100.0,
+        status_code=200,
+        error_rate=0.0,
+        latency_p95_ms=120.0,
+        request_count=5,
+        cpu_usage_percent=50,
+        memory_usage_percent=50,
+        note="ok",
+    )
+    with (
+        patch("src.api.local_dashboard.validate_public_url", return_value="https://example.org"),
+        patch("src.api.local_dashboard.probe_url_metrics", return_value=mock_metrics),
+    ):
+        api_client.post("/check-url-metrics", json={"url": "https://example.org"})
+
+    assert api_client.get("/url-check-history").json()["items"]
+
+    cleared = api_client.delete("/url-check-history")
+    assert cleared.status_code == 200
+    assert cleared.json()["items"] == []
+    assert api_client.get("/url-check-history").json()["items"] == []

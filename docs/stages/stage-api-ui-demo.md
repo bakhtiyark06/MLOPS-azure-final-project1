@@ -29,7 +29,7 @@ python3.11 -m uvicorn src.api.main:app --reload --port 8000
 ## Open the dashboard
 
 - **Dashboard:** http://127.0.0.1:8000/
-- **Swagger API docs:** http://127.0.0.1:8000/docs
+- **Swagger API docs:** http://127.0.0.1:8000/docs (dark-themed, branded to match the dashboard)
 - **Health check:** http://127.0.0.1:8000/health
 
 For Azure deployment, open your deployed service URL (for example the AKS load balancer IP).
@@ -39,6 +39,7 @@ For Azure deployment, open your deployed service URL (for example the AKS load b
 | Section | What it does |
 |---------|----------------|
 | **System Status** | API health, model loaded, data/model files, evaluation status |
+| **Drift Summary** | Live drift score; auto-refreshes after predict/URL check when 5+ observations exist |
 | **Run Local Pipeline** | Generate data → ingest/validate → train → evaluate |
 | **Check Public Website URL** | Probe a public URL and auto-fill metrics |
 | **Predict Outage Risk** | Send metrics to `POST /predict` and show risk |
@@ -59,9 +60,9 @@ Existing hub links are modern tabs at the top:
 | Swagger UI | `/docs` |
 | Health Check | `/health` |
 | Eval Metrics | `/monitoring/eval-metrics` |
-| Drift Summary | `/monitoring/drift-summary` |
+| Drift Summary | `#drift-summary` (in-page card; data from `GET /drift`) |
 | Combined Status | `/monitoring/status` |
-| Drift Report | `/reports/drift/drift_report.html` (when generated) |
+| Drift Report | `/artifacts/reports/drift_report.html` |
 | OpenRouter Report | `/reports/openrouter/openrouter_eval_summary.md` (when generated) |
 
 ## Run the full local pipeline from the browser
@@ -103,6 +104,8 @@ Endpoint: `POST /check-url-metrics`
 4. Read **Healthy** or **Outage Risk**, outage probability, risk meter, and explanation cards
 
 Uses existing `POST /predict` — no page reload.
+
+After each predict or URL check, the **Drift Summary** card refreshes. Observations accumulate in `artifacts/reports/current_observations.csv`; drift analysis runs once 5+ rows exist.
 
 ### Healthy example
 
