@@ -6,13 +6,36 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
+import httpx
+
+from src.api.config import ApiSettings
+from src.api.demo_pipeline import run_local_pipeline
+from src.api.drift_service import ensure_drift_report, get_activity_report_dir, try_update_drift_after_activity
+from src.api.openrouter_service import get_openrouter_report_path, read_openrouter_report, run_openrouter_report
+from src.api.inference import features_from_request, predict_outage
+from src.api.schemas import (
+    DriftActivityStatus,
+    OpenRouterReportResponse,
+    OpenRouterRunResponse,
+    UrlCheckRequest,
+    UrlMetricsResponse,
+)
+from src.api.system_status import get_system_status
+from src.api.url_checker import UrlValidationError, probe_url_metrics, validate_public_url
+from src.api.url_check_history import append_entry, clear_history, list_history
+from src.monitoring.observations import append_observation
 from src.utils.config import get_project_root
+
+_TEMPLATE_PATH = Path(__file__).resolve().parent / "templates" / "dashboard.html"
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
 def _file_status(path: Path) -> dict[str, str | bool]:
@@ -35,104 +58,227 @@ def _read_json_safe(path: Path) -> dict | None:
         return None
 
 
-def build_dashboard_html(base_url: str, root: Path) -> str:
-    """Build the local hub landing page."""
-    drift_html = root / "reports" / "drift" / "drift_report.html"
-    drift_summary = root / "reports" / "drift" / "drift_summary.json"
-    openrouter_eval = root / "reports" / "openrouter" / "openrouter_eval_summary.md"
+def _activity_drift_html_path(root: Path) -> Path:
+    """Prefer activity-triggered drift HTML, fallback to CLI report."""
+    activity = root / "artifacts" / "reports" / "drift_report.html"
+    if activity.exists():
+        return activity
+    return root / "reports" / "drift" / "drift_report.html"
+
+
+def _activity_drift_summary_path(root: Path) -> Path:
+    activity = root / "artifacts" / "reports" / "drift_summary.json"
+    if activity.exists():
+        return activity
+    return root / "reports" / "drift" / "drift_summary.json"
+
+
+_SVG_ATTRS = 'xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'
+
+_NAV_ICONS: dict[str, str] = {
+    "dashboard": f'<svg {_SVG_ATTRS}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+    "demo": f'<svg {_SVG_ATTRS}><polygon points="5 3 19 12 5 21 5 3"/></svg>',
+    "architecture": f'<svg {_SVG_ATTRS}><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
+    "system-apis": f'<svg {_SVG_ATTRS}><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+    "drift": f'<svg {_SVG_ATTRS}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+    "openrouter": f'<svg {_SVG_ATTRS}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>',
+    "url-check": f'<svg {_SVG_ATTRS}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+    "predict": f'<svg {_SVG_ATTRS}><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg>',
+    "report": f'<svg {_SVG_ATTRS}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+    "about": f'<svg {_SVG_ATTRS}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+}
+
+
+def _nav_link(
+    label: str,
+    href: str,
+    icon_key: str,
+    *,
+    is_section: bool = False,
+    external: bool = False,
+    active: bool = False,
+) -> str:
+    """Build a single nav tab with icon, label, and active indicator."""
+    classes = ["tab-nav__link"]
+    if external:
+        classes.append("tab-nav__link--external")
+    if active:
+        classes.append("active")
+
+    attrs: list[str] = [f'class="{" ".join(classes)}"', f'aria-label="{label}"']
+    if is_section:
+        attrs.append("data-section")
+    if external:
+        attrs.append('rel="noopener"')
+
+    icon = _NAV_ICONS.get(icon_key, _NAV_ICONS["dashboard"])
+    attr_str = " ".join(attrs)
+    return (
+        f'<a href="{href}" {attr_str}>'
+        f'<span class="tab-nav__icon" aria-hidden="true">{icon}</span>'
+        f'<span class="tab-nav__label">{label}</span>'
+        f'<span class="tab-nav__indicator" aria-hidden="true"></span>'
+        f"</a>"
+    )
+
+
+def _build_nav_tabs(base_url: str, root: Path) -> str:
+    """Convert legacy homepage links into modern tab-style navigation."""
+    drift_html = _activity_drift_html_path(root)
+    openrouter_eval = get_openrouter_report_path()
     openrouter_fail = root / "reports" / "openrouter" / "openrouter_failure_analysis.md"
+    legacy_openrouter = root / "reports" / "openrouter" / "openrouter_eval_summary.md"
+
+    # (label, href, icon_key, is_section, external)
+    tabs: list[tuple[str, str, str, bool, bool]] = [
+        ("Dashboard", "#dashboard", "dashboard", True, False),
+        ("Demo Hub", f"{base_url}/demo", "demo", False, True),
+        ("Architecture", f"{base_url}/demo/flow", "architecture", False, True),
+        ("System APIs", "#system-apis", "system-apis", True, False),
+        ("Drift Summary", "#drift-summary", "drift", True, False),
+        ("OpenRouter Summary", "#openrouter-summary", "openrouter", True, False),
+        ("Website URL Check", "#url-check", "url-check", True, False),
+        ("Prediction", "#predict", "predict", True, False),
+    ]
+    if _file_status(drift_html)["available"]:
+        href = (
+            f"{base_url}/artifacts/reports/drift_report.html"
+            if "artifacts" in str(drift_html)
+            else f"{base_url}/reports/drift/drift_report.html"
+        )
+        tabs.append(("Drift Report", href, "report", False, True))
+    if _file_status(openrouter_eval)["available"]:
+        tabs.append(
+            (
+                "OpenRouter Report",
+                f"{base_url}/artifacts/reports/openrouter_eval_summary.md",
+                "report",
+                False,
+                True,
+            )
+        )
+    elif _file_status(legacy_openrouter)["available"]:
+        tabs.append(
+            (
+                "OpenRouter Report",
+                f"{base_url}/reports/openrouter/openrouter_eval_summary.md",
+                "report",
+                False,
+                True,
+            )
+        )
+    if _file_status(openrouter_fail)["available"]:
+        tabs.append(
+            (
+                "OpenRouter Failure",
+                f"{base_url}/reports/openrouter/openrouter_failure_analysis.md",
+                "report",
+                False,
+                True,
+            )
+        )
+
+    tabs.append(("About", "#about", "about", True, False))
+
+    parts: list[str] = []
+    for label, href, icon_key, is_section, external in tabs:
+        parts.append(
+            _nav_link(
+                label,
+                href,
+                icon_key,
+                is_section=is_section,
+                external=external,
+                active=href == "#dashboard",
+            )
+        )
+    return "\n    ".join(parts)
+
+
+def build_dashboard_html(base_url: str, root: Path) -> str:
+    """Build the modern prediction dashboard."""
+    drift_html = _activity_drift_html_path(root)
+    drift_summary = _activity_drift_summary_path(root)
+    openrouter_eval = get_openrouter_report_path()
     eval_metrics = root / "data" / "processed" / "eval_metrics.json"
-    arch_img = root / "docs" / "architecture" / "images" / "03-drift-alert-openrouter.png"
 
     drift_status = _file_status(drift_html)
     openrouter_status = _file_status(openrouter_eval)
+    if not openrouter_status["available"]:
+        openrouter_status = {"available": False, "label": "Not generated"}
     metrics = _read_json_safe(eval_metrics) or {}
     drift = _read_json_safe(drift_summary) or {}
 
     gate = metrics.get("gate_passed")
-    gate_text = "PASSED" if gate is True else "FAILED" if gate is False else "unknown"
-    drift_text = drift.get("summary", "Run drift check to generate summary")
+    if gate is True:
+        gate_text = "PASSED"
+        gate_class = "ok"
+    elif gate is False:
+        gate_text = "FAILED"
+        gate_class = "warn"
+    else:
+        gate_text = "unknown"
+        gate_class = ""
 
-    links = [
-        ("API Swagger UI", f"{base_url}/docs", "Try /health and /predict interactively"),
-        ("Health check", f"{base_url}/health", "JSON model status"),
-        ("Eval metrics", f"{base_url}/monitoring/eval-metrics", "Quality gate JSON"),
-        ("Drift summary", f"{base_url}/monitoring/drift-summary", "Evidently drift JSON"),
-        ("Combined status", f"{base_url}/monitoring/status", "All monitoring in one JSON"),
-    ]
-    if drift_status["available"]:
-        links.append(("Drift HTML report", f"{base_url}/reports/drift/drift_report.html", "Evidently visual report"))
-    if openrouter_status["available"]:
-        links.append(("OpenRouter eval report", f"{base_url}/reports/openrouter/openrouter_eval_summary.md", "LLM summary"))
-    if _file_status(openrouter_fail)["available"]:
-        links.append(("OpenRouter failure report", f"{base_url}/reports/openrouter/openrouter_failure_analysis.md", "LLM failure analysis"))
-    if _file_status(arch_img)["available"]:
-        links.append(("Architecture diagram", f"{base_url}/architecture/03-drift-alert-openrouter.png", "Member D demo slide"))
+    if drift:
+        drift_label = (
+            f"drift_score {drift.get('drift_score', 0):.0%}"
+            if drift.get("drift_detected")
+            else "No drift detected"
+        )
+    else:
+        drift_label = drift_status["label"]
 
-    link_rows = "\n".join(
-        f"""
-        <tr>
-          <td><a href="{url}">{title}</a></td>
-          <td>{desc}</td>
-        </tr>"""
-        for title, url, desc in links
+    template = _TEMPLATE_PATH.read_text(encoding="utf-8")
+    return (
+        template.replace("{{NAV_TABS}}", _build_nav_tabs(base_url, root))
+        .replace("{{GATE_TEXT}}", gate_text)
+        .replace("{{GATE_CLASS}}", gate_class)
+        .replace("{{DRIFT_LABEL}}", drift_label if drift else str(drift_status["label"]))
+        .replace("{{OPENROUTER_LABEL}}", openrouter_status["label"])
     )
 
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Outage Predictor — Local Hub</title>
-  <style>
-    body {{ font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }}
-    h1 {{ margin-bottom: 0.25rem; }}
-    .subtitle {{ color: #555; margin-top: 0; }}
-    table {{ border-collapse: collapse; width: 100%; margin: 1.5rem 0; }}
-    th, td {{ border: 1px solid #ddd; padding: 0.6rem 0.8rem; text-align: left; }}
-    th {{ background: #f5f5f5; }}
-    .cards {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }}
-    .card {{ border: 1px solid #ddd; border-radius: 8px; padding: 1rem; background: #fafafa; }}
-    .ok {{ color: #0a7; font-weight: 600; }}
-    .warn {{ color: #c60; font-weight: 600; }}
-    code {{ background: #eee; padding: 0.1rem 0.35rem; border-radius: 4px; }}
-  </style>
-</head>
-<body>
-  <h1>Website Outage Predictor</h1>
-  <p class="subtitle">Single local hub — API, monitoring, drift &amp; OpenRouter reports</p>
 
-  <div class="cards">
-    <div class="card"><strong>Quality gate</strong><br/><span class="{'ok' if gate else 'warn'}">{gate_text}</span></div>
-    <div class="card"><strong>Drift report</strong><br/>{drift_status['label']}</div>
-    <div class="card"><strong>OpenRouter</strong><br/>{openrouter_status['label']}</div>
-  </div>
-
-  <p><strong>Drift:</strong> {drift_text}</p>
-
-  <h2>All endpoints on this host</h2>
-  <table>
-    <thead><tr><th>Link</th><th>Description</th></tr></thead>
-    <tbody>{link_rows}</tbody>
-  </table>
-
-  <h2>Generate reports (terminal)</h2>
-  <pre><code>python3.11 scripts/run_drift_check.py
-python3.11 scripts/openrouter_report.py</code></pre>
-</body>
-</html>"""
-
-
-def register_local_dashboard(app: FastAPI) -> None:
+def register_local_dashboard(
+    app: FastAPI,
+    *,
+    get_state: Callable[[], dict[str, Any]] | None = None,
+    reload_model: Callable[[], None] | None = None,
+    settings: ApiSettings | None = None,
+) -> None:
     """Attach dashboard home page, monitoring JSON routes, and static report mounts."""
     root = get_project_root()
+    api_settings = settings or ApiSettings()
     reports_dir = root / "reports"
+    activity_reports_dir = get_activity_report_dir()
     arch_dir = root / "docs" / "architecture" / "images"
     reports_dir.mkdir(parents=True, exist_ok=True)
+    activity_reports_dir.mkdir(parents=True, exist_ok=True)
+
+    if _STATIC_DIR.is_dir():
+        app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
     def local_hub() -> HTMLResponse:
-        return HTMLResponse(build_dashboard_html("http://localhost:8000", root))
+        return HTMLResponse(build_dashboard_html("http://127.0.0.1:8000", root))
+
+    @app.get(
+        "/drift",
+        tags=["Monitoring"],
+        summary="Get drift summary",
+        description="Returns drift summary JSON, auto-generating the report if missing.",
+    )
+    def drift_summary() -> dict:
+        return ensure_drift_report(force=False)
+
+    @app.post(
+        "/drift/run",
+        tags=["Monitoring"],
+        summary="Regenerate drift report",
+        description="Force a new drift analysis and return the updated summary.",
+    )
+    def drift_run() -> dict:
+        return ensure_drift_report(force=True)
 
     @app.get("/monitoring/eval-metrics", include_in_schema=False)
     def monitoring_eval_metrics() -> dict:
@@ -144,30 +290,134 @@ def register_local_dashboard(app: FastAPI) -> None:
 
     @app.get("/monitoring/drift-summary", include_in_schema=False)
     def monitoring_drift_summary() -> dict:
-        path = root / "reports" / "drift" / "drift_summary.json"
-        data = _read_json_safe(path)
-        if data is None:
-            return {"error": "drift_summary.json not found — run scripts/run_drift_check.py"}
-        return data
+        return ensure_drift_report(force=False)
 
     @app.get("/monitoring/status", include_in_schema=False)
     def monitoring_status() -> dict:
         eval_data = _read_json_safe(root / "data" / "processed" / "eval_metrics.json")
-        drift_data = _read_json_safe(root / "reports" / "drift" / "drift_summary.json")
+        drift_data = ensure_drift_report(force=False)
         return {
-            "local_hub": "http://localhost:8000",
-            "api_docs": "http://localhost:8000/docs",
-            "health": "http://localhost:8000/health",
-            "predict": "http://localhost:8000/predict",
+            "local_hub": "http://127.0.0.1:8000",
+            "api_docs": "http://127.0.0.1:8000/docs",
+            "health": "http://127.0.0.1:8000/health",
+            "predict": "http://127.0.0.1:8000/predict",
             "gate_passed": eval_data.get("gate_passed") if eval_data else None,
             "eval_metrics": eval_data,
             "drift": drift_data,
             "reports": {
-                "drift_html": "/reports/drift/drift_report.html",
-                "openrouter_eval": "/reports/openrouter/openrouter_eval_summary.md",
+                "drift_html": "/artifacts/reports/drift_report.html",
+                "openrouter_eval": "/artifacts/reports/openrouter_eval_summary.md",
             },
         }
 
+    @app.post(
+        "/reports/openrouter/run",
+        response_model=OpenRouterRunResponse,
+        tags=["Reports"],
+        summary="Generate OpenRouter evaluation summary",
+        description="Runs OpenRouter report generation (API or local fallback). Never exposes the API key.",
+    )
+    def openrouter_run() -> dict:
+        return run_openrouter_report(force=True)
+
+    @app.get(
+        "/reports/openrouter",
+        response_model=OpenRouterReportResponse,
+        tags=["Reports"],
+        summary="Get OpenRouter evaluation summary",
+        description="Returns markdown report content and metadata if generated.",
+    )
+    def openrouter_get() -> dict:
+        return read_openrouter_report()
+
+    @app.get("/system-status", include_in_schema=False)
+    def system_status() -> dict:
+        state = get_state() if get_state else {}
+        model_loaded = state.get("model") is not None
+        api_status = "ok" if model_loaded else "degraded"
+        return get_system_status(
+            model_loaded=model_loaded,
+            api_status=api_status,
+            model_path=api_settings.model_path,
+        )
+
+    @app.post("/run-local-pipeline", include_in_schema=False)
+    def run_local_pipeline_endpoint() -> dict:
+        return run_local_pipeline(reload_model=reload_model)
+
+    @app.post(
+        "/check-url-metrics",
+        response_model=UrlMetricsResponse,
+        tags=["Website Health"],
+        summary="Analyze a website URL using live response signals",
+        description=(
+            "Probes a public http or https URL with repeated GET requests and returns "
+            "metrics (response time, status code, error rate, latency) suitable for "
+            "POST /predict. Private or localhost URLs are rejected."
+        ),
+    )
+    def check_url_metrics(payload: UrlCheckRequest) -> UrlMetricsResponse:
+        try:
+            url = validate_public_url(payload.url)
+            result = probe_url_metrics(url)
+            append_entry(url, result)
+
+            state = get_state() if get_state else {}
+            model = state.get("model")
+            outage_predicted: bool | None = None
+            outage_probability: float | None = None
+            drift_status: DriftActivityStatus | None = None
+
+            if model is not None:
+                metrics_dict = result.model_dump()
+                features = features_from_request(metrics_dict)
+                prediction = predict_outage(model, features)
+                outage_predicted = bool(prediction["outage_predicted"])
+                outage_probability = float(prediction["outage_probability"])
+
+                # Demo-triggered drift after URL check (non-blocking for probe response).
+                try:
+                    append_observation(
+                        metrics_dict,
+                        outage_predicted=outage_predicted,
+                        outage_probability=outage_probability,
+                        source="url_check",
+                        url=url,
+                    )
+                    drift_status = DriftActivityStatus(**try_update_drift_after_activity())
+                except Exception:
+                    pass
+
+            return result.model_copy(
+                update={
+                    "outage_predicted": outage_predicted,
+                    "outage_probability": outage_probability,
+                    "drift": drift_status,
+                }
+            )
+        except UrlValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except httpx.HTTPError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail="Could not reach the website. Check the URL and try again.",
+            ) from exc
+
+    @app.get("/url-check-history", include_in_schema=False)
+    def url_check_history() -> dict:
+        return {"items": list_history()}
+
+    @app.delete("/url-check-history", include_in_schema=False)
+    def url_check_history_clear() -> dict:
+        clear_history()
+        return {"items": []}
+
+    # API routes under /reports/* must be registered before static mount.
     app.mount("/reports", StaticFiles(directory=str(reports_dir)), name="reports")
+    app.mount(
+        "/artifacts/reports",
+        StaticFiles(directory=str(activity_reports_dir)),
+        name="activity_reports",
+    )
     if arch_dir.is_dir():
         app.mount("/architecture", StaticFiles(directory=str(arch_dir)), name="architecture")

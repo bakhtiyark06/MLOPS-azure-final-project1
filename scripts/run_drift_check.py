@@ -14,7 +14,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from src.monitoring.drift import get_default_drift_paths, run_drift_check, write_drift_summary
+from src.monitoring.drift import execute_drift_pipeline, get_default_drift_paths
 
 
 def main() -> int:
@@ -37,6 +37,11 @@ def main() -> int:
         default=None,
         help="Report output directory (default: reports/drift)",
     )
+    parser.add_argument(
+        "--no-ensure-inputs",
+        action="store_true",
+        help="Do not auto-generate reference/current CSVs if missing",
+    )
     args = parser.parse_args()
 
     default_ref, default_cur, default_out = get_default_drift_paths()
@@ -45,7 +50,12 @@ def main() -> int:
     output_dir = args.output_dir or default_out
 
     try:
-        result = run_drift_check(reference_path, current_path, output_dir)
+        result, payload = execute_drift_pipeline(
+            reference_path,
+            current_path,
+            output_dir,
+            ensure_inputs=not args.no_ensure_inputs,
+        )
     except FileNotFoundError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
@@ -53,15 +63,16 @@ def main() -> int:
         print(f"ERROR: Drift check failed: {exc}", file=sys.stderr)
         return 1
 
-    summary_path = write_drift_summary(result)
     print(result.summary)
     print(f"HTML report: {result.report_path}")
     print(f"JSON report: {result.json_path}")
-    print(f"Summary:     {summary_path}")
+    print(f"Summary:     {output_dir / 'drift_summary.json'}")
+    print(f"Drift score: {payload.get('drift_score')}")
+    print(f"Method:      {payload.get('method')}")
 
     if result.drift_detected:
         print("\nDRIFT DETECTED — alert condition met", file=sys.stderr)
-        drifted = [col for col, drifted in result.column_drifts.items() if drifted]
+        drifted = payload.get("drifted_columns", [])
         if drifted:
             print(f"Drifted features: {', '.join(drifted)}", file=sys.stderr)
         return 1

@@ -14,9 +14,13 @@ from fastapi import FastAPI, HTTPException, Request
 
 from src.api.config import ApiSettings, get_api_settings
 from src.api.inference import features_from_request, load_model, predict_outage
-from src.api.schemas import HealthResponse, PredictRequest, PredictResponse
+from src.api.schemas import DriftActivityStatus, HealthResponse, PredictRequest, PredictResponse
 from src.data.preprocess import get_feature_columns
 from src.api.local_dashboard import register_local_dashboard
+from src.api.architecture_page import register_architecture_pages
+from src.api.swagger_ui import OPENAPI_DESCRIPTION, OPENAPI_TAGS, register_custom_docs
+from src.api.drift_service import try_update_drift_after_activity
+from src.monitoring.observations import append_observation
 from src.monitoring.telemetry import instrument_fastapi, setup_telemetry
 
 logger = logging.getLogger(__name__)
@@ -44,6 +48,12 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     app = FastAPI(
         title=settings.app_name,
         version=settings.app_version,
+        description=OPENAPI_DESCRIPTION,
+        contact={"name": "MLOps Team", "url": "https://github.com/YOUR_ORG/MLOPS-azure-final-project1"},
+        license_info={"name": "Course Project"},
+        openapi_tags=OPENAPI_TAGS,
+        docs_url=None,
+        redoc_url=None,
         lifespan=lifespan,
     )
     instrument_fastapi(app)
@@ -62,7 +72,13 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         )
         return response
 
-    @app.get("/health", response_model=HealthResponse)
+    @app.get(
+        "/health",
+        response_model=HealthResponse,
+        tags=["System"],
+        summary="Check service status",
+        description="Returns API health and whether the outage prediction model is loaded.",
+    )
     def health() -> HealthResponse:
         model_loaded = _state.get("model") is not None
         return HealthResponse(
@@ -71,7 +87,16 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             feature_count=len(get_feature_columns()),
         )
 
-    @app.post("/predict", response_model=PredictResponse)
+    @app.post(
+        "/predict",
+        response_model=PredictResponse,
+        tags=["Prediction"],
+        summary="Predict outage risk from infrastructure metrics",
+        description=(
+            "Accepts raw monitoring metrics (response time, error rate, CPU, memory, etc.) "
+            "and returns outage probability from the trained model."
+        ),
+    )
     def predict(payload: PredictRequest) -> PredictResponse:
         model = _state.get("model")
         if model is None:
@@ -85,9 +110,42 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             result.get("outage_probability", 0.0),
             result.get("outage_predicted"),
         )
-        return PredictResponse(**result)
 
-    register_local_dashboard(app)
+        # Demo-triggered drift: append observation and refresh report (non-blocking).
+        # Production systems usually schedule/batch drift checks instead.
+        drift_status: DriftActivityStatus | None = None
+        try:
+            feature_dict = payload.model_dump()
+            append_observation(
+                feature_dict,
+                outage_predicted=bool(result["outage_predicted"]),
+                outage_probability=float(result["outage_probability"]),
+                source="predict",
+            )
+            drift_status = DriftActivityStatus(**try_update_drift_after_activity())
+        except Exception as exc:
+            logger.warning("Drift hook after predict failed (prediction still returned): %s", exc)
+
+        return PredictResponse(**result, drift=drift_status)
+
+    def reload_model() -> None:
+        try:
+            _state["model"] = load_model(settings.model_path)
+            _state["load_error"] = None
+            logger.info("Reloaded model from %s", settings.model_path)
+        except FileNotFoundError as exc:
+            _state["model"] = None
+            _state["load_error"] = str(exc)
+            logger.warning("Model reload failed: %s", exc)
+
+    register_local_dashboard(
+        app,
+        get_state=lambda: _state,
+        reload_model=reload_model,
+        settings=settings,
+    )
+    register_architecture_pages(app)
+    register_custom_docs(app)
     return app
 
 

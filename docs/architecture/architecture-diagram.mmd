@@ -1,0 +1,93 @@
+flowchart TB
+    subgraph DeveloperGitHub ["Developer + GitHub"]
+        Dev["Developer"]
+        Repo["GitHub Repo"]
+        Dev -->|"git push"| Repo
+    end
+
+    subgraph SecuritySecrets ["Security + Secrets"]
+        GHS["GitHub Secrets"]
+        KV["Azure Key Vault"]
+        KV -.->|"alt store"| GHS
+    end
+
+    subgraph CICD ["CI/CD"]
+        GHA["GitHub Actions"]
+        Repo -->|"trigger"| GHA
+        GHS -->|"credentials"| GHA
+    end
+
+    subgraph DataStorage ["Data + DVC"]
+        Raw["monitoring.csv"]
+        DVC["DVC"]
+        Blob["Azure Blob"]
+        Raw --> DVC
+        DVC -->|"push"| Blob
+    end
+
+    subgraph Training ["Training + Gate"]
+        AML["Azure ML Compute"]
+        Train["train_model"]
+        MLflow["MLflow"]
+        Eval["evaluate"]
+        Gate{"Quality Gate"}
+        Blob -->|"dataset"| AML
+        AML --> Train
+        Train -->|"metrics"| MLflow
+        Train -->|"joblib"| Eval
+        Eval --> Gate
+    end
+
+    subgraph ModelRegistry ["Model Registry"]
+        Reg["Azure ML Registry"]
+        Gate -->|"pass"| Reg
+    end
+
+    subgraph Containerization ["Containerization"]
+        Docker["Docker build"]
+        ACR["ACR"]
+        GHA -->|"build"| Docker
+        Reg -->|"model"| Docker
+        Docker -->|"image:tag"| ACR
+    end
+
+    subgraph Deployment ["Deployment"]
+        ACI["ACI staging"]
+        AKS["AKS production"]
+        Ingress["AKS Ingress"]
+        API["FastAPI /predict"]
+        ACR -->|"pull"| ACI
+        ACR -->|"pull"| AKS
+        GHA -->|"deploy"| AKS
+        AKS --> Ingress
+        ACI --> API
+        Ingress --> API
+    end
+
+    subgraph Monitoring ["Monitoring"]
+        Client["Client"]
+        Obs["observations"]
+        Evidently["Evidently drift"]
+        DriftRpt["drift_report"]
+        AppIns["App Insights"]
+        AzMon["Azure Monitor"]
+        Client -->|"POST metrics"| API
+        API -->|"telemetry"| AppIns
+        API -->|"log"| Obs
+        Blob -->|"reference"| Evidently
+        Obs --> Evidently
+        Evidently --> DriftRpt
+        AppIns --> AzMon
+        Evidently -.->|"signal"| AzMon
+    end
+
+    subgraph LLMIntegration ["LLM Integration"]
+        OR["OpenRouter"]
+        Summary["eval summary"]
+        Eval -->|"metrics"| OR
+        DriftRpt -->|"context"| OR
+        GHS -->|"API key"| OR
+        OR --> Summary
+    end
+
+    Gate -->|"fail blocks"| GHA

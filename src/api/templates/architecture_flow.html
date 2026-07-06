@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Full System Architecture — Website Outage MLOps</title>
+  <link rel="stylesheet" href="/static/architecture.css" />
+</head>
+<body class="arch-page">
+  <div class="arch-bg" aria-hidden="true">
+    <div class="arch-bg-grid"></div>
+    <canvas class="arch-bg-particles" id="arch-particles"></canvas>
+    <div class="arch-bg-vignette"></div>
+  </div>
+
+  <header class="arch-header">
+    <div class="arch-header-inner">
+      <nav class="arch-top-nav" aria-label="Page navigation">
+        <a href="/" class="arch-top-nav__link" aria-label="Return to Dashboard">
+          <span class="arch-top-nav__icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          </span>
+          <span class="arch-top-nav__label">Dashboard</span>
+        </a>
+        <span class="arch-top-nav__sep" aria-hidden="true">/</span>
+        <span class="arch-top-nav__current" aria-current="page">Architecture</span>
+      </nav>
+
+      <h1 id="arch-title">Full System Architecture</h1>
+      <p class="arch-subtitle" id="arch-subtitle">Loading…</p>
+
+      <nav class="stage-tabs" id="stage-tabs" aria-label="Infrastructure sections"></nav>
+
+      <nav class="arch-timeline" id="arch-timeline" aria-label="Pipeline timeline"></nav>
+
+      <div class="arch-controls" role="toolbar" aria-label="Tour controls">
+        <button type="button" class="btn-arch btn-primary" id="btn-live-flow">Live Flow</button>
+        <button type="button" class="btn-arch btn-ghost" id="btn-pause" disabled>Pause</button>
+        <button type="button" class="btn-arch btn-ghost" id="btn-reset">Reset</button>
+        <button type="button" class="btn-arch btn-ghost" id="btn-prev" aria-label="Previous step">◀</button>
+        <button type="button" class="btn-arch btn-ghost" id="btn-next" aria-label="Next step">▶</button>
+        <span class="arch-progress" id="flow-progress" aria-live="polite"></span>
+      </div>
+      <p id="arch-stage-note" class="arch-stage-note" hidden></p>
+    </div>
+  </header>
+
+  <main class="arch-main">
+    <div class="arch-canvas-wrap">
+      <div class="arch-canvas" id="arch-canvas">
+        <svg class="arch-edges" id="arch-edges" aria-hidden="true"></svg>
+        <div class="arch-sections" id="arch-sections"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="arch-footer">
+    <a href="/demo">Demo Hub</a> · <a href="/">Dashboard</a> · <a href="/docs">Swagger</a>
+  </footer>
+
+  <script src="/static/architecture.js"></script>
+</body>
+</html>

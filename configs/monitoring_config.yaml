@@ -7,6 +7,11 @@ drift:
   reference_path: data/reference/reference.csv
   current_path: data/processed/current.csv
   report_dir: reports/drift
+  activity_report_dir: artifacts/reports
+  observations_file: artifacts/reports/current_observations.csv
+  min_observations: 5
+  ks_pvalue_threshold: 0.05
+  moderate_drift_score: 0.5
 
 alerts:
   action_group_name: outage-predictor-alerts

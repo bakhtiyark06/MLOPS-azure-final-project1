@@ -1,3 +1,7 @@
+# Author: TODO - Team Member Name
+# Responsibility: TODO - API Configuration
+# Last Reviewed: TODO
+
 """API configuration."""
 
 from __future__ import annotations

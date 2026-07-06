@@ -22,6 +22,8 @@ py infra/deploy_aks.py --wait-health
 
 **Local demo (single port):** `python3.11 scripts/run_local.py` → open http://127.0.0.1:8000/
 
+**Interactive architecture (recommended opener):** http://127.0.0.1:8000/demo/flow — use **Live Flow** for the full pipeline tour, or **stage tabs** to focus one swimlane at a time (see [stage-architecture-viz.md](stages/stage-architecture-viz.md)).
+
 Set `OPENROUTER_API_KEY` before the OpenRouter demo.
 
 ## Presentation order
@@ -37,12 +39,14 @@ Set `OPENROUTER_API_KEY` before the OpenRouter demo.
 
 ### 1. Drift report
 
+Open the dashboard **Drift Summary** section, or:
+
 ```powershell
-py scripts/run_drift_check.py
+curl http://127.0.0.1:8000/drift
 start reports/drift/drift_report.html
 ```
 
-**Say:** "Reference baseline from training vs current production snapshot — Evidently flags feature drift."
+**Say:** "Reference baseline from training vs current production snapshot — Evidently flags feature drift. The API generates the report automatically."
 
 ### 2. Alert firing
 
@@ -86,7 +90,9 @@ git push origin v1.0.0
 
 ## Architecture slide
 
-Use the rendered PNGs in [docs/architecture/images/](architecture/images/) (or Mermaid in [docs/architecture/README.md](architecture/README.md)):
+**Live (preferred for demo day):** http://127.0.0.1:8000/demo/flow — five swimlanes, stage tabs, Live Flow tour.
+
+**Static PNGs** in [docs/architecture/images/](architecture/images/) (or Mermaid in [docs/architecture/README.md](architecture/README.md)):
 
 | Slide | File | Use for |
 |-------|------|---------|

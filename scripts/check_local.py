@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Author: TODO - Team Member Name
+# Responsibility: TODO - Local Dev Utilities
+# Last Reviewed: TODO
+
 """Quick check: is the local outage API running?"""
 
 from __future__ import annotations
