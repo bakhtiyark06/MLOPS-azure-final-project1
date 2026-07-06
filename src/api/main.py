@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from contextlib import asynccontextmanager
 from typing import Any
@@ -16,16 +17,25 @@ from src.api.config import ApiSettings, get_api_settings
 from src.api.inference import features_from_request, load_model, predict_outage
 from src.api.schemas import DriftActivityStatus, HealthResponse, PredictRequest, PredictResponse
 from src.data.preprocess import get_feature_columns
-from src.api.local_dashboard import register_local_dashboard
-from src.api.architecture_page import register_architecture_pages
 from src.api.swagger_ui import OPENAPI_DESCRIPTION, OPENAPI_TAGS, register_custom_docs
 from src.api.drift_service import try_update_drift_after_activity
 from src.monitoring.observations import append_observation
 from src.monitoring.telemetry import instrument_fastapi, setup_telemetry
+from src.utils.config import get_project_root
 
 logger = logging.getLogger(__name__)
 
 _state: dict[str, Any] = {"model": None, "load_error": None}
+
+
+def _local_hub_enabled() -> bool:
+    """Local dashboard needs scripts/ — disabled in slim Docker production images."""
+    flag = os.getenv("ENABLE_LOCAL_HUB", "").strip().lower()
+    if flag in ("1", "true", "yes"):
+        return True
+    if flag in ("0", "false", "no"):
+        return False
+    return (get_project_root() / "scripts" / "run_local.py").is_file()
 
 
 def create_app(settings: ApiSettings | None = None) -> FastAPI:
@@ -138,14 +148,18 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             _state["load_error"] = str(exc)
             logger.warning("Model reload failed: %s", exc)
 
-    register_local_dashboard(
-        app,
-        get_state=lambda: _state,
-        reload_model=reload_model,
-        settings=settings,
-    )
-    register_architecture_pages(app)
     register_custom_docs(app)
+    if _local_hub_enabled():
+        from src.api.architecture_page import register_architecture_pages
+        from src.api.local_dashboard import register_local_dashboard
+
+        register_local_dashboard(
+            app,
+            get_state=lambda: _state,
+            reload_model=reload_model,
+            settings=settings,
+        )
+        register_architecture_pages(app)
     return app
 
 

@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -86,7 +87,9 @@ def main() -> int:
     if not args.no_reload:
         cmd.append("--reload")
 
-    return subprocess.run(cmd, cwd=_PROJECT_ROOT).returncode
+    env = os.environ.copy()
+    env["ENABLE_LOCAL_HUB"] = "true"
+    return subprocess.run(cmd, cwd=_PROJECT_ROOT, env=env).returncode
 
 
 if __name__ == "__main__":
