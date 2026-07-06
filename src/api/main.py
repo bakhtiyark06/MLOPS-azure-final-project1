@@ -18,8 +18,6 @@ from src.api.inference import features_from_request, load_model, predict_outage
 from src.api.schemas import DriftActivityStatus, HealthResponse, PredictRequest, PredictResponse
 from src.data.preprocess import get_feature_columns
 from src.api.swagger_ui import OPENAPI_DESCRIPTION, OPENAPI_TAGS, register_custom_docs
-from src.api.drift_service import try_update_drift_after_activity
-from src.monitoring.observations import append_observation
 from src.monitoring.telemetry import instrument_fastapi, setup_telemetry
 from src.utils.config import get_project_root
 
@@ -122,9 +120,11 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         )
 
         # Demo-triggered drift: append observation and refresh report (non-blocking).
-        # Production systems usually schedule/batch drift checks instead.
         drift_status: DriftActivityStatus | None = None
         try:
+            from src.monitoring.observations import append_observation
+            from src.api.drift_service import try_update_drift_after_activity
+
             feature_dict = payload.model_dump()
             append_observation(
                 feature_dict,

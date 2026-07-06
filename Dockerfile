@@ -16,6 +16,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY configs/ ./configs/
+COPY scripts/ ./scripts/
 COPY src/ ./src/
 COPY models/ ./models/
 

@@ -15,7 +15,6 @@ from typing import Any
 import pandas as pd
 from scipy import stats
 
-from scripts.generate_sample_data import generate_monitoring_data
 from src.data.preprocess import get_feature_columns
 from src.data.validate_data import validate_raw_dataframe
 from src.utils.config import get_project_root, load_model_config, load_yaml_config
@@ -88,6 +87,8 @@ def ensure_drift_inputs(
     n_samples = int(data_cfg.get("default_sample_count", 2000))
     raw_name = data_cfg.get("raw_filename", "website_monitoring.csv")
     output_path = root / "data" / "raw" / raw_name
+
+    from scripts.generate_sample_data import generate_monitoring_data
 
     df = generate_monitoring_data(n_samples=n_samples)
     is_valid, errors = validate_raw_dataframe(df)
